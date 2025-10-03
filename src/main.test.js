@@ -1,58 +1,142 @@
-import { describe, it, expect } from 'vitest';
-import itemsjs from 'itemsjs';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Sample data for testing
-const sampleProductData = [
-  { id: 1, name: 'Laptop', color: 'Silver', material: 'Aluminum', price: 1200, weight_kg: 1.8 },
-  { id: 2, name: 'Mouse', color: 'Black', material: 'Plastic', price: 25, weight_kg: 0.1 },
-  { id: 3, name: 'Keyboard', color: 'Black', material: 'Plastic', price: 75, weight_kg: 0.5 },
-  { id: 4, name: 'Monitor', color: 'Black', material: 'Plastic', price: 300, weight_kg: 5.0 },
-  { id: 5, name: 'Desk Chair', color: 'Black', material: 'Mesh', price: 150, weight_kg: 15.0 },
-  { id: 6, name: 'Desk', color: 'Brown', material: 'Wood', price: 250, weight_kg: 25.0 },
+// --- Mocks ---
+
+const mockProductData = [
+  { id: 1, name: 'Product 1', color: 'Red', material: 'Metal', price: 100, weight_kg: 10 },
+  { id: 2, name: 'Product 2', color: 'Blue', material: 'Plastic', price: 200, weight_kg: 20 },
 ];
 
-// Configuration similar to the one in main.js
-const itemsjsConfiguration = {
-  aggregations: {
-    color: { title: 'Color', size: 10 },
-    material: { title: 'Material', size: 10 },
+const mockSearch = vi.fn((query) => {
+    let filteredItems = mockProductData;
+    const filters = query.filters || {};
+    const activeFilterKeys = Object.keys(filters).filter(key => {
+        const filterValue = filters[key];
+        return Array.isArray(filterValue) && filterValue.length > 0;
+    });
+
+    if (activeFilterKeys.length > 0) {
+        filteredItems = mockProductData.filter(p =>
+            activeFilterKeys.every(key => {
+                const filterValue = filters[key];
+                if (key === 'color' || key === 'material') {
+                    return filterValue.includes(p[key]);
+                }
+                if (key === 'price' || key === 'weight_kg') {
+                    return p[key] >= filterValue[0] && p[key] <= filterValue[1];
+                }
+                return true;
+            })
+        );
+    }
+
+    return {
+      data: {
+        items: filteredItems,
+        facets: {
+          color: { values: [{ key: 'Red', doc_count: 1 }, { key: 'Blue', doc_count: 1 }] },
+          material: { values: [{ key: 'Metal', doc_count: 1 }, { key: 'Plastic', doc_count: 1 }] }
+        }
+      }
+    };
+});
+
+vi.mock('itemsjs', () => ({
+  default: vi.fn(() => ({
+    search: mockSearch,
+  }))
+}));
+
+global.fetch = vi.fn();
+
+vi.mock('nouislider', () => ({
+  default: {
+    // The key fix: `create` doesn't return the slider instance.
+    // It attaches it to the DOM element it was called on.
+    create: vi.fn((element, options) => {
+      element.noUiSlider = {
+        on: vi.fn(),
+        // Mock other methods if needed
+      };
+    }),
   }
-};
+}));
 
-describe('itemsjs filtering', () => {
-  it('should return only black items when filtered by color: Black', () => {
-    const itemsjsInstance = itemsjs(sampleProductData, itemsjsConfiguration);
-    const results = itemsjsInstance.search({
-      filters: {
-        color: ['Black']
-      }
-    });
-    expect(results.data.items).toHaveLength(4);
-    results.data.items.forEach(item => {
-      expect(item.color).toBe('Black');
-    });
-  });
+// --- Test Suites ---
 
-  it('should return only plastic items when filtered by material: Plastic', () => {
-    const itemsjsInstance = itemsjs(sampleProductData, itemsjsConfiguration);
-    const results = itemsjsInstance.search({
-      filters: {
-        material: ['Plastic']
-      }
-    });
-    expect(results.data.items).toHaveLength(3);
-    results.data.items.forEach(item => {
-      expect(item.material).toBe('Plastic');
-    });
-  });
+describe('Application Logic', () => {
+    let mainModule;
 
-  it('should return an empty array when no items match the filter', () => {
-    const itemsjsInstance = itemsjs(sampleProductData, itemsjsConfiguration);
-    const results = itemsjsInstance.search({
-      filters: {
-        color: ['Red']
-      }
+    beforeEach(async () => {
+        vi.clearAllMocks();
+        document.body.innerHTML = `
+            <body>
+                <div id="filter-sidebar">
+                    <div id="filter-groups-container"></div>
+                    <div id="facet-container-color"></div>
+                    <div id="facet-container-material"></div>
+                </div>
+                <div id="product-list-container"></div>
+            </body>`;
+
+        fetch.mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve([...mockProductData]),
+        });
+
+        // Use a unique query param to force re-import and get a fresh module
+        mainModule = await import('./main.js?t=' + Date.now());
     });
-    expect(results.data.items).toHaveLength(0);
-  });
+
+    afterEach(() => {
+      // Clean up spies
+      vi.restoreAllMocks();
+    });
+
+    describe('Initialization', () => {
+        it('should fetch data and render initial products', async () => {
+            await mainModule.initializeApp();
+
+            const productContainer = document.getElementById('product-list-container');
+            expect(fetch).toHaveBeenCalledWith('/products.json');
+            expect(productContainer.querySelectorAll('.product-card').length).toBe(2);
+            expect(productContainer.innerHTML).toContain('Product 1');
+            expect(productContainer.innerHTML).toContain('Product 2');
+        });
+
+        it('should handle fetch error gracefully', async () => {
+            fetch.mockRejectedValue(new Error('Network failure'));
+
+            await mainModule.initializeApp();
+
+            const productContainer = document.getElementById('product-list-container');
+            expect(productContainer.innerHTML).toContain('Application Error!');
+            expect(productContainer.innerHTML).toContain('Network failure');
+        });
+    });
+
+    describe('Filtering', () => {
+        it('should filter by a single category correctly', async () => {
+            await mainModule.initializeApp();
+
+            mainModule.updateCategoricalFilters('color', 'Red', true);
+            mainModule.applyFilters();
+
+            const cards = document.querySelectorAll('.product-card');
+            expect(cards.length).toBe(1);
+            expect(cards[0].innerHTML).toContain('Product 1');
+        });
+
+        it('should render all products again when a filter is removed', async () => {
+            await mainModule.initializeApp();
+
+            mainModule.updateCategoricalFilters('color', 'Red', true);
+            mainModule.applyFilters();
+            expect(document.querySelectorAll('.product-card').length).toBe(1);
+
+            mainModule.updateCategoricalFilters('color', 'Red', false);
+            mainModule.applyFilters();
+            expect(document.querySelectorAll('.product-card').length).toBe(2);
+        });
+    });
 });
