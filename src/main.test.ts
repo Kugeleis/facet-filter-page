@@ -37,9 +37,11 @@ const mockUiConfig = [
     }
 ];
 
-const mockSearch = vi.fn((query?: { filters?: Filters }) => {
+const mockSearch = vi.fn((query?: { filters?: Filters; per_page?: number }) => {
     const filters = query?.filters || {};
 
+    // NOTE: The mock doesn't implement pagination, it returns all filtered items.
+    // The `per_page` is tested via `toHaveBeenCalledWith`.
     let filteredItems = mockProductData.filter(product => {
         if (filters.color && Array.isArray(filters.color) && filters.color.length > 0) {
             if (!filters.color.includes(product.color)) {
@@ -160,6 +162,15 @@ describe('Application Logic', () => {
             await mainModule.initializeApp();
             const productContainer = document.getElementById('product-list-container');
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
+        });
+
+        it('should request all items on initial load to avoid pagination issues', async () => {
+            await mainModule.initializeApp();
+            expect(mockSearch).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    per_page: mockProductData.length,
+                })
+            );
         });
     });
 

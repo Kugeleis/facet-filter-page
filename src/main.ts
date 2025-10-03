@@ -161,6 +161,7 @@ function applyFilters(): void {
 
   // Get initial results from itemsjs, including aggregations
   let results = itemsjsInstance.search({
+    per_page: productData.length,
     filters: categoricalFilters,
   });
 
