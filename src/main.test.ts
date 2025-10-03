@@ -123,7 +123,9 @@ describe('Application Logic', () => {
         vi.clearAllMocks();
         document.body.innerHTML = `
             <body>
+                <h1 id="main-title"></h1>
                 <div id="filter-sidebar">
+                    <p id="filters-label"></p>
                     <div id="filter-groups-container"></div>
                     <div id="facet-container-color"></div>
                     <div id="facet-container-material"></div>
@@ -148,6 +150,12 @@ describe('Application Logic', () => {
 
         // Mock the fetch call to return our mock data
         (fetch as Mock).mockImplementation((url: string) => {
+            if (url === '/setup.json') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ dataset: 'products' }),
+                });
+            }
             if (url === '/products.json') {
                 return Promise.resolve({
                     ok: true,
@@ -160,7 +168,7 @@ describe('Application Logic', () => {
                     json: () => Promise.resolve([...mockTemplateConfig]),
                 });
             }
-            if (url === '/ui-config.json') {
+            if (url === '/products-ui-config.json') {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([...mockUiConfig]),
@@ -182,8 +190,10 @@ describe('Application Logic', () => {
             await mainModule.initializeApp();
 
             const productContainer = document.getElementById('product-list-container');
+            expect(fetch).toHaveBeenCalledWith('/setup.json');
             expect(fetch).toHaveBeenCalledWith('/products.json');
             expect(fetch).toHaveBeenCalledWith('/products-config.json');
+            expect(fetch).toHaveBeenCalledWith('/products-ui-config.json');
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
             expect(productContainer?.innerHTML).toContain('Product 1');
             expect(productContainer?.innerHTML).toContain('Product 2');
@@ -192,6 +202,12 @@ describe('Application Logic', () => {
         it('should handle fetch error gracefully if products.json fails', async () => {
             // Mock a failure for only the products.json fetch
             (fetch as Mock).mockImplementation((url: string) => {
+                if (url === '/setup.json') {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve({ dataset: 'products' }),
+                    });
+                }
                 if (url === '/products.json') {
                     return Promise.resolve({ ok: false, status: 404 });
                 }
@@ -201,7 +217,7 @@ describe('Application Logic', () => {
                         json: () => Promise.resolve(mockTemplateConfig),
                     });
                 }
-                if (url === '/ui-config.json') {
+                if (url === '/products-ui-config.json') {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve(mockUiConfig),

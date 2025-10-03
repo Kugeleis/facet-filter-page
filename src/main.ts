@@ -34,6 +34,7 @@ let currentFilters: Filters = {};
 let productData: Product[] = [];
 let cardTemplateMapping: TemplateMapping[] = [];
 let uiConfig: UIGroup[] = [];
+let noProductsMessage: string = "No products match your current filters."; // Add default
 
 // --- NEW INTERFACES & CONFIG ---
 export interface TemplateMapping {
@@ -143,10 +144,15 @@ function applyFilters(): void {
     }
   }
 
+  // Get initial results from itemsjs, including aggregations
   let results = itemsjsInstance.search({
     filters: categoricalFilters,
   });
 
+  // This will hold the final aggregations we want to render
+  let finalAggregations = results.data.aggregations;
+
+  // If continuous filters are active, we must manually filter items AND recalculate aggregations
   if (Object.keys(continuousFilters).length > 0) {
     results.data.items = results.data.items.filter(item => {
       return Object.entries(continuousFilters).every(([key, range]) => {
@@ -154,40 +160,45 @@ function applyFilters(): void {
         return value >= range[0] && value <= range[1];
       });
     });
+
+    // --- Manual Aggregation Recalculation ---
+    const recalculateAggregations = (items: Product[]) => {
+      const newAggregations: Record<string, { buckets: { key: string; doc_count: number }[] }> = {};
+      const categoricalProps = uiConfig.flatMap(g => g.properties).filter(p => p.type === 'categorical');
+
+      categoricalProps.forEach(prop => {
+        const counts: Record<string, number> = {};
+        items.forEach(item => {
+          const value = item[prop.id] as string;
+          if (value) {
+            counts[value] = (counts[value] || 0) + 1;
+          }
+        });
+        newAggregations[prop.id] = {
+          buckets: Object.entries(counts).map(([key, count]) => ({ key, doc_count: count }))
+        };
+      });
+      return newAggregations;
+    };
+
+    // Overwrite the aggregations with our recalculated ones
+    finalAggregations = recalculateAggregations(results.data.items);
   }
 
   console.log("Filtered items:", results.data.items);
-
-  // --- Manual Aggregation Recalculation ---
-  const recalculateAggregations = (items: Product[]) => {
-    const newAggregations: Record<string, { buckets: { key: string; doc_count: number }[] }> = {};
-    const categoricalProps = uiConfig.flatMap(g => g.properties).filter(p => p.type === 'categorical');
-
-    categoricalProps.forEach(prop => {
-      const counts: Record<string, number> = {};
-      items.forEach(item => {
-        const value = item[prop.id] as string;
-        if (value) {
-          counts[value] = (counts[value] || 0) + 1;
-        }
-      });
-      newAggregations[prop.id] = {
-        buckets: Object.entries(counts).map(([key, count]) => ({ key, doc_count: count }))
-      };
-    });
-
-    return newAggregations;
-  };
-
-  const finalFacets = recalculateAggregations(results.data.items);
-  console.log("Recalculated Facets data:", JSON.stringify(finalFacets, null, 2));
+  console.log("Final Aggregations data:", JSON.stringify(finalAggregations, null, 2));
 
   renderProductCards(results.data.items, cardTemplateMapping);
 
-  // --- Render recalculated facets ---
-  Object.keys(finalFacets).forEach(propId => {
-    renderFacets(finalFacets[propId].buckets, propId);
-  });
+  // --- Render facets using the final aggregations ---
+  if (finalAggregations) {
+    Object.keys(finalAggregations).forEach(propId => {
+      const aggregation = finalAggregations[propId];
+      if (aggregation && aggregation.buckets) {
+        renderFacets(aggregation.buckets, propId);
+      }
+    });
+  }
 }
 
 function renderFacets(buckets: any[], propId: string): void {
@@ -223,7 +234,7 @@ function renderProductCards(products: Product[], templateMapping: TemplateMappin
   container.innerHTML = '';
 
   if (products.length === 0) {
-    container.innerHTML = '<div class="column is-full"><p class="has-text-centered">No products match your current filters.</p></div>';
+    container.innerHTML = `<div class="column is-full"><p class="has-text-centered">${noProductsMessage}</p></div>`;
     return;
   }
 
@@ -254,7 +265,13 @@ function renderProductCards(products: Product[], templateMapping: TemplateMappin
 async function initializeApp(): Promise<void> {
   const filterGroupsContainer = document.getElementById('filter-groups-container');
   const productContainer = document.getElementById('product-list-container');
-  if (!filterGroupsContainer || !productContainer) return;
+  const mainTitleElement = document.getElementById('main-title');
+  const filtersLabelElement = document.getElementById('filters-label');
+
+  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement) {
+    console.error("A required element was not found in the DOM.");
+    return;
+  }
 
   try {
     // --- 1. Fetch Setup Configuration ---
@@ -263,10 +280,28 @@ async function initializeApp(): Promise<void> {
       throw new Error(`HTTP error! status: ${setupResponse.status}. Failed to load setup.json.`);
     }
     const setupConfig = await setupResponse.json();
-    const dataset = setupConfig.dataset;
+    const { dataset, title, theme, ui } = setupConfig;
 
     if (!dataset) {
       throw new Error("`dataset` key not found in setup.json.");
+    }
+
+    // --- Apply UI configurations ---
+    document.title = title || 'Vite Facet Filter App';
+    mainTitleElement.textContent = title || 'Product Showcase';
+    filtersLabelElement.textContent = ui?.filtersLabel || 'Filters';
+    noProductsMessage = ui?.noProductsMessage || 'No products match your current filters.';
+
+    // --- Apply Theme ---
+    if (theme) {
+      const style = document.createElement('style');
+      style.textContent = `
+        :root {
+          --primary-color: ${theme.primary || '#00d1b2'};
+          --link-color: ${theme.link || '#3273dc'};
+        }
+      `;
+      document.head.appendChild(style);
     }
 
     // --- 2. Fetch Dataset-specific Files ---
