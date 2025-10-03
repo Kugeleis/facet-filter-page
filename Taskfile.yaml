@@ -28,13 +28,23 @@ tasks:
       - echo "--- Regenerating Static JSON Data ---"
       - "{{.PY_SCRIPT}}"
 
+  check-deps:
+    desc: Checks if node_modules exists and installs dependencies if missing.
+    status:
+      - test -d node_modules # Checks if the node_modules directory exists
+    cmds:
+      - echo "Dependencies missing. Running 'npm install'..."
+      - "{{.NPM_INSTALL}}"
+      - echo "Dependencies checked."
+
   # ----------------------------------------------------
-  # 3. DEVELOPMENT AND TDD
+  # 2. UPDATED DEV TASK
   # ----------------------------------------------------
   dev:
     desc: Regenerate data and start the Vite development server (with HMR).
     deps:
-      - data # Ensure the latest data is present before starting
+      - check-deps # Check dependencies first
+      - data # Ensure the latest data is present
     cmds:
       - echo "--- Starting Vite Development Server ---"
       - "{{.VITE_DEV}}"
