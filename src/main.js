@@ -104,24 +104,58 @@ function updateCategoricalFilters(propId, value, isChecked) {
 }
 
 function applyFilters() {
-  // 1. Run search with current filters
-  const results = itemsjsInstance.search({
-    filters: currentFilters,
+  // Separate categorical and continuous filters
+  const categoricalFilters = {};
+  const continuousFilters = {};
+
+  for (const key in currentFilters) {
+    const isContinuous = uiConfig.some(group => group.properties.some(p => p.id === key && p.type === 'continuous'));
+    if (isContinuous) {
+      continuousFilters[key] = currentFilters[key];
+    } else {
+      categoricalFilters[key] = currentFilters[key];
+    }
+  }
+
+  // 1. Run search with only categorical filters
+  let results = itemsjsInstance.search({
+    filters: categoricalFilters,
   });
+
+  // 2. Manually apply continuous filters to the results
+  if (Object.keys(continuousFilters).length > 0) {
+    results.data.items = results.data.items.filter(item => {
+      return Object.entries(continuousFilters).every(([key, range]) => {
+        const value = item[key];
+        return value >= range[0] && value <= range[1];
+      });
+    });
+  }
+
+  console.log("Filtered items:", results.data.items);
+
+  // Manually retrieve the full list of facets for rendering,
+  // as search results only contain facets for the *filtered* set.
+  const facets = {
+    color: itemsjsInstance.aggregation({ name: 'color', per_page: 100 }),
+    material: itemsjsInstance.aggregation({ name: 'material', per_page: 100 })
+  };
+  console.log("Facets data:", JSON.stringify(facets, null, 2));
 
   // 2. Render results
   renderProductCards(results.data.items);
-  renderFacets(results.data.facets);
+  renderFacets(facets);
 }
 
 function renderFacets(facets) {
   // Renders the categorical checkboxes and updates counts
   for (const propId in facets) {
     const container = document.getElementById(`facet-container-${propId}`);
-    if (!container) continue;
+    if (!container || !facets[propId] || !facets[propId].data) continue;
 
     let html = '';
-    facets[propId].values.forEach(facetValue => {
+    // The aggregation data is nested under `data.buckets`
+    facets[propId].data.buckets.forEach(facetValue => {
       const isChecked = currentFilters[propId] && currentFilters[propId].includes(facetValue.key);
 
       // Use Tailwind classes for styling
@@ -183,11 +217,20 @@ async function initializeApp() {
   // 2. Load data asynchronously (Vite ensures data is served)
   try {
     const response = await fetch('/products.json');
-    if (!response.ok) throw new Error('Failed to load product data');
+    if (!response.ok) {
+      // Throw a more specific error to be caught below
+      throw new Error(`HTTP error! status: ${response.status}. Failed to load products.json. Did you run 'npm run data-build'?`);
+    }
     productData = await response.json();
+    console.log("Unfiltered (all) items:", productData);
   } catch (error) {
-    console.error("Data Loading Error:", error);
-    productContainer.innerHTML = '<p class="text-red-500 col-span-3">Error loading products.</p>';
+    console.error("Fatal Error:", error.message);
+    // Display a user-friendly error message in the main container
+    productContainer.innerHTML = `<div class="col-span-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+      <strong class="font-bold">Application Error!</strong>
+      <span class="block sm:inline">${error.message}</span>
+    </div>`;
+    // Stop execution if data fails to load, as the app is unusable.
     return;
   }
 
@@ -198,10 +241,6 @@ async function initializeApp() {
     aggregations: uiConfig.flatMap(group => group.properties)
       .reduce((acc, p) => {
         acc[p.id] = { title: p.title, size: 100 };
-        if (p.type === 'continuous') {
-          // This marks the field for range filtering.
-          // The search function will expect a [min, max] array for these filters.
-        }
         return acc;
       }, {}),
   };
@@ -219,3 +258,17 @@ async function initializeApp() {
 }
 
 document.addEventListener('DOMContentLoaded', initializeApp);
+
+// Export for testing
+export {
+  initializeApp,
+  applyFilters,
+  updateCategoricalFilters,
+  initializeNoUiSlider,
+  productData,
+  itemsjsInstance,
+  currentFilters,
+  uiConfig,
+  renderProductCards,
+  renderFacets
+};
