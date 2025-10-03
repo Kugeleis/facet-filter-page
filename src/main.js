@@ -113,8 +113,8 @@ function applyFilters() {
   });
 
   // 2. Render results
-  renderProductCards(results.items);
-  renderFacets(results.facets);
+  renderProductCards(results.data.items);
+  renderFacets(results.data.facets);
 }
 
 function renderFacets(facets) {
@@ -185,7 +185,7 @@ async function initializeApp() {
 
   // 2. Load data asynchronously (Vite ensures data is served)
   try {
-    const response = await fetch('/src/products.json');
+    const response = await fetch('/products.json');
     if (!response.ok) throw new Error('Failed to load product data');
     productData = await response.json();
   } catch (error) {
@@ -196,7 +196,8 @@ async function initializeApp() {
 
   // 3. Configure ItemsJS
   const itemsjsConfiguration = {
-    facets: uiConfig.flatMap(group => group.properties)
+    searchableFields: ['name', 'color', 'material'],
+    aggregations: uiConfig.flatMap(group => group.properties)
       .filter(p => p.type === 'categorical')
       .reduce((acc, p) => ({ ...acc, [p.id]: { title: p.title, size: 100 } }), {}),
   };

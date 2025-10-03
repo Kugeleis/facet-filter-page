@@ -4,8 +4,8 @@ import csv
 import os
 
 # Crucial: Define the output path relative to this script
-# It writes up one directory (..) and into the src/ folder.
-OUTPUT_JSON_PATH = os.path.join(os.path.dirname(__file__), "../src/products.json")
+# It writes up one directory (..) and into the public/ folder.
+OUTPUT_JSON_PATH = os.path.join(os.path.dirname(__file__), "../public/products.json")
 SOURCE_CSV_FILE = os.path.join(os.path.dirname(__file__), "products.csv")
 
 
