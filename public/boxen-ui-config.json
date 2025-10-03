@@ -13,5 +13,15 @@
       { "id": "NAS_Funktion", "title": "NAS Function", "type": "categorical" },
       { "id": "Stromverbrauch_W", "title": "Power (W)", "type": "continuous" }
     ]
+  },
+  {
+    "groupName": "Firmware",
+    "properties": [
+      {
+        "id": "Aktuelle_Firmware_Version",
+        "title": "Firmware Version (min.)",
+        "type": "stepped-continuous-single"
+      }
+    ]
   }
 ]
