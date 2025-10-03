@@ -30,13 +30,31 @@ const mockSearch = vi.fn((query) => {
         );
     }
 
+    const facets = {
+        color: { buckets: [] },
+        material: { buckets: [] }
+    };
+
+    const colorCounts = {};
+    const materialCounts = {};
+
+    mockProductData.forEach(p => {
+        colorCounts[p.color] = (colorCounts[p.color] || 0) + 1;
+        materialCounts[p.material] = (materialCounts[p.material] || 0) + 1;
+    });
+
+    for (const color in colorCounts) {
+        facets.color.buckets.push({ key: color, doc_count: colorCounts[color] });
+    }
+
+    for (const material in materialCounts) {
+        facets.material.buckets.push({ key: material, doc_count: materialCounts[material] });
+    }
+
     return {
       data: {
         items: filteredItems,
-        facets: {
-          color: { values: [{ key: 'Red', doc_count: 1 }, { key: 'Blue', doc_count: 1 }] },
-          material: { values: [{ key: 'Metal', doc_count: 1 }, { key: 'Plastic', doc_count: 1 }] }
-        }
+        aggregations: facets
       }
     };
 });
@@ -44,6 +62,20 @@ const mockSearch = vi.fn((query) => {
 vi.mock('itemsjs', () => ({
   default: vi.fn(() => ({
     search: mockSearch,
+    aggregation: (query) => {
+        const facetName = query.name;
+        const counts = {};
+        mockProductData.forEach(p => {
+            counts[p[facetName]] = (counts[p[facetName]] || 0) + 1;
+        });
+
+        const buckets = [];
+        for (const key in counts) {
+            buckets.push({ key: key, doc_count: counts[key] });
+        }
+
+        return { data: { buckets: buckets } };
+    }
   }))
 }));
 
