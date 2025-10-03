@@ -3,6 +3,9 @@ import { fileURLToPath, URL } from 'url';
 
 export default defineConfig({
   base: '/facet-filter-page/',
+  define: {
+    '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
+  },
   plugins: [],
   resolve: {
     alias: {

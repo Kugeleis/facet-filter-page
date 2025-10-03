@@ -267,6 +267,11 @@ async function initializeApp(): Promise<void> {
   const productContainer = document.getElementById('product-list-container');
   const mainTitleElement = document.getElementById('main-title');
   const filtersLabelElement = document.getElementById('filters-label');
+  const appVersionElement = document.getElementById('app-version');
+
+  if (appVersionElement) {
+    appVersionElement.textContent = __APP_VERSION__;
+  }
 
   if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement) {
     console.error("A required element was not found in the DOM.");

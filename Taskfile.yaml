@@ -73,7 +73,25 @@ tasks:
       - "{{.VITE_BUILD}}"
 
   # ----------------------------------------------------
-  # 5. CLEANUP
+  # 5. VERSIONING
+  # ----------------------------------------------------
+  version:patch:
+    desc: "Bump the patch version (e.g., 0.1.0 -> 0.1.1)"
+    cmds:
+      - npm version patch
+
+  version:minor:
+    desc: "Bump the minor version (e.g., 0.1.0 -> 0.2.0)"
+    cmds:
+      - npm version minor
+
+  version:major:
+    desc: "Bump the major version (e.g., 0.1.0 -> 1.0.0)"
+    cmds:
+      - npm version major
+
+  # ----------------------------------------------------
+  # 6. CLEANUP
   # ----------------------------------------------------
   clean:
     desc: Remove node_modules, package-lock, and the dist folder.
