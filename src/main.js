@@ -62,15 +62,18 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
  */
 function generatePropertyFilter(property, parentElement) {
   const propId = property.id;
-  const filterDiv = document.createElement('div');
-  filterDiv.className = 'mb-6';
-  filterDiv.innerHTML = `<h4 class="font-semibold text-lg mb-3 text-gray-800">${property.title}</h4>`;
+  const listItem = document.createElement('li');
+
+  // The title is now a clickable link
+  const titleLink = document.createElement('a');
+  titleLink.textContent = property.title;
+  listItem.appendChild(titleLink);
 
   if (property.type === "categorical") {
-    const facetContainer = document.createElement('div');
+    const facetContainer = document.createElement('ul');
     facetContainer.id = `facet-container-${propId}`;
-    facetContainer.className = 'space-y-2';
-    filterDiv.appendChild(facetContainer);
+    listItem.appendChild(facetContainer);
+
     // Event delegation for checkboxes
     facetContainer.addEventListener('change', (e) => {
       if (e.target.type === 'checkbox') {
@@ -79,13 +82,17 @@ function generatePropertyFilter(property, parentElement) {
     });
 
   } else if (property.type === "continuous") {
+    const sliderWrapper = document.createElement('div');
+    // Add some padding inside the li for the slider
+    sliderWrapper.style.padding = '0.75em';
     const values = productData.map(item => item[propId]).filter(v => typeof v === 'number');
     const minVal = Math.floor(Math.min(...values));
     const maxVal = Math.ceil(Math.max(...values));
-    initializeNoUiSlider(propId, minVal, maxVal, filterDiv);
+    initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
+    listItem.appendChild(sliderWrapper);
   }
 
-  parentElement.appendChild(filterDiv);
+  parentElement.appendChild(listItem);
 }
 
 // --- FILTERING & RENDERING LOGIC ---
@@ -159,16 +166,17 @@ function renderFacets(facets) {
     facets[propId].data.buckets.forEach(facetValue => {
       const isChecked = currentFilters[propId] && currentFilters[propId].includes(facetValue.key);
 
-      // Use Tailwind classes for styling
+      // Use Bulma classes for styling
       html += `
-        <label class="flex items-center space-x-3 text-gray-700 hover:text-gray-900 cursor-pointer">
-          <input type="checkbox" 
-                 value="${facetValue.key}" 
-                 ${isChecked ? 'checked' : ''}
-                 class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-          <span class="text-sm">${facetValue.key}</span>
-          <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">${facetValue.doc_count}</span>
-        </label>
+        <li>
+          <label class="checkbox">
+            <input type="checkbox"
+                   value="${facetValue.key}"
+                   ${isChecked ? 'checked' : ''}>
+            ${facetValue.key}
+            <span class="tag is-light is-rounded ml-2">${facetValue.doc_count}</span>
+          </label>
+        </li>
       `;
     });
     container.innerHTML = html;
@@ -177,31 +185,22 @@ function renderFacets(facets) {
 
 function renderProductCards(products) {
   const container = document.getElementById('product-list-container');
+  const template = document.getElementById('product-card-template');
   container.innerHTML = '';
 
   if (products.length === 0) {
-    container.innerHTML = '<p class="col-span-3 text-center text-gray-500 py-10">No products match your current filters.</p>';
+    container.innerHTML = '<div class="column is-full"><p class="has-text-centered">No products match your current filters.</p></div>';
     return;
   }
 
   products.forEach(product => {
-    // Use Tailwind for card styling
-    const card = document.createElement('div');
-    card.className = 'product-card bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out';
-    card.innerHTML = `
-      <div class="p-6">
-        <h3 class="text-xl font-bold text-gray-800 mb-2">${product.name}</h3>
-        <div class="text-sm text-gray-600 space-y-1">
-          <p><strong>Color:</strong> <span class="font-medium text-gray-800">${product.color}</span></p>
-          <p><strong>Material:</strong> <span class="font-medium text-gray-800">${product.material}</span></p>
-          <p><strong>Weight:</strong> <span class="font-medium text-gray-800">${product.weight_kg} kg</span></p>
-        </div>
-        <div class="mt-4 flex items-center justify-between">
-          <p class="text-2xl font-extrabold text-gray-900">$${product.price.toFixed(2)}</p>
-        </div>
-      </div>
-    `;
-    container.appendChild(card);
+    const cardClone = template.content.cloneNode(true);
+    cardClone.querySelector('[data-template-field="name"]').textContent = product.name;
+    cardClone.querySelector('[data-template-field="color"]').textContent = product.color;
+    cardClone.querySelector('[data-template-field="material"]').textContent = product.material;
+    cardClone.querySelector('[data-template-field="weight"]').textContent = product.weight_kg;
+    cardClone.querySelector('[data-template-field="price"]').textContent = `$${product.price.toFixed(2)}`;
+    container.appendChild(cardClone);
   });
 }
 
@@ -209,18 +208,10 @@ function renderProductCards(products) {
  * Initializes the entire application asynchronously.
  */
 async function initializeApp() {
-  const sidebar = document.getElementById('filter-sidebar');
+  const filterGroupsContainer = document.getElementById('filter-groups-container');
   const productContainer = document.getElementById('product-list-container');
 
-  // 1. Initial UI rendering (skeleton loading recommended here)
-  uiConfig.forEach(group => {
-    const groupHeader = document.createElement('h3');
-    groupHeader.className = 'text-base font-semibold mt-4 mb-2 text-gray-800';
-    groupHeader.textContent = group.groupName;
-    sidebar.appendChild(groupHeader);
-  });
-
-  // 2. Load data asynchronously (Vite ensures data is served)
+  // 1. Load data asynchronously (Vite ensures data is served)
   try {
     const response = await fetch('/products.json');
     if (!response.ok) {
@@ -232,15 +223,15 @@ async function initializeApp() {
   } catch (error) {
     console.error("Fatal Error:", error.message);
     // Display a user-friendly error message in the main container
-    productContainer.innerHTML = `<div class="col-span-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-      <strong class="font-bold">Application Error!</strong>
-      <span class="block sm:inline">${error.message}</span>
+    productContainer.innerHTML = `<div role="alert">
+      <strong>Application Error!</strong>
+      <span>${error.message}</span>
     </div>`;
     // Stop execution if data fails to load, as the app is unusable.
     return;
   }
 
-  // 3. Configure ItemsJS
+  // 2. Configure ItemsJS
   const itemsjsConfiguration = {
     searchableFields: ['name', 'color', 'material'],
     // Ensure all properties, including continuous ones, are included in aggregations
@@ -252,14 +243,26 @@ async function initializeApp() {
   };
   itemsjsInstance = itemsjs(productData, itemsjsConfiguration);
 
-  // 4. Generate the dynamic filters (continuous properties need data max/min)
+  // 3. Generate the dynamic filters with the correct structure
   uiConfig.forEach(group => {
+    // Create the menu label for the group
+    const groupLabel = document.createElement('p');
+    groupLabel.className = 'menu-label';
+    groupLabel.textContent = group.groupName;
+    filterGroupsContainer.appendChild(groupLabel);
+
+    // Create the menu list for the group's properties
+    const menuList = document.createElement('ul');
+    menuList.className = 'menu-list';
+    filterGroupsContainer.appendChild(menuList);
+
+    // Generate each property filter and append it to the new menu list
     group.properties.forEach(property => {
-      generatePropertyFilter(property, sidebar);
+      generatePropertyFilter(property, menuList);
     });
   });
 
-  // 5. Initial filter and render
+  // 4. Initial filter and render
   applyFilters();
 }
 
