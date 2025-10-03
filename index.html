@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vite Facet Filter App</title>
   <link rel="stylesheet" href="/src/style.css">
+  <link rel="stylesheet" href="/src/theme.css">
 </head>
 
 <body>
   <section class="section">
     <div class="container">
-      <h1 class="title">Product Showcase</h1>
+      <h1 id="main-title" class="title">Product Showcase</h1>
     </div>
   </section>
 
@@ -20,7 +21,7 @@
       <div class="columns">
         <div class="column is-one-quarter">
           <aside id="filter-sidebar" class="menu box">
-            <p class="menu-label">Filters</p>
+            <p id="filters-label" class="menu-label">Filters</p>
             <div id="filter-groups-container"></div>
           </aside>
         </div>

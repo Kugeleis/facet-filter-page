@@ -1,0 +1,18 @@
+:root {
+  --primary-color: #00d1b2; /* Bulma's default turquoise */
+  --link-color: #3273dc;    /* Bulma's default blue */
+}
+
+/* Override Bulma's variables */
+.title {
+  color: var(--primary-color);
+}
+
+a, .tag, .checkbox:hover {
+  color: var(--link-color);
+}
+
+.tag.is-light {
+  background-color: var(--link-color);
+  color: white;
+}

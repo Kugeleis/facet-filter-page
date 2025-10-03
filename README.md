@@ -1,10 +1,20 @@
-# Facet Filter Page
+# Data-Agnostic Facet Filter Page
 
-This project is a single-page application that demonstrates a faceted product filtering system. It is built with Vite, Bulma, and uses `itemsjs` for client-side filtering.
+This project is a highly configurable, data-agnostic single-page application that demonstrates a faceted product filtering system. It is built with Vite and Bulma, and it uses `itemsjs` for efficient client-side filtering.
+
+The application is designed to be completely decoupled from the data it displays. You can easily swap out datasets by providing a new set of data and configuration files, without touching the source code.
+
+## How It Works
+
+The application's behavior is controlled by a single configuration file: `public/setup.json`. At runtime, the app reads this file to determine:
+- Which dataset to load.
+- What title to display on the page.
+- The color theme (primary and link colors).
+- UI text for labels and messages.
+
+This approach allows for maximum flexibility and reusability.
 
 ## Project Setup and Local Development
-
-Follow these steps to get the project running on your local machine.
 
 ### Prerequisites
 
@@ -19,102 +29,62 @@ First, install the necessary Node.js packages:
 npm install
 ```
 
-### 2. Generate Product Data
+### 2. Prepare Your Dataset
 
-The application requires a `products.json` file to function. This file is generated from a CSV using a Python script. Run the following command to create it:
+To use your own dataset, you need to create three CSV files inside the `scripts/` directory. Let's assume your dataset is named `my_awesome_products`. You would create:
 
+1.  **`scripts/my_awesome_products.csv`**: The raw data. Each row is an item, and each column is a property.
+2.  **`scripts/my_awesome_products-config.csv`**: Defines how data from your CSV maps to the HTML template. It needs `field` and `property` columns.
+3.  **`scripts/my_awesome_products-ui-config.csv`**: Defines the filter groups and properties for the UI. It needs `groupName`, `id`, `title`, and `type` (`categorical` or `continuous`).
+
+### 3. Generate JSON Data
+
+The application uses JSON files for data loading. A Python script is provided to convert your CSV files into the required JSON format.
+
+To generate data for the default `boxen` dataset, run:
 ```bash
 npm run data-build
 ```
-This command must be run before starting the development server. If you don't, the application will fail to load with an error.
 
-### 3. Run the Development Server
+To generate data for your custom dataset (e.g., `my_awesome_products`), pass the name as an argument:
+```bash
+python3 scripts/generate_json.py my_awesome_products
+```
+This command will create the necessary `.json` files in the `public/` directory.
 
-Once the dependencies are installed and the data is generated, you can start the Vite development server:
+### 4. Configure `setup.json`
+
+Now, open `public/setup.json` and configure it to use your new dataset and customize the UI:
+
+```json
+{
+  "dataset": "my_awesome_products",
+  "title": "My Awesome Product Showcase",
+  "theme": {
+    "primary": "#ff3860",
+    "link": "#ff8e9b"
+  },
+  "ui": {
+    "filtersLabel": "Refine Your Search",
+    "noProductsMessage": "Sorry, no awesome products match your search."
+  }
+}
+```
+
+### 5. Run the Development Server
+
+Once the dependencies are installed and the data is configured, start the Vite development server:
 
 ```bash
 npm run dev
 ```
 
-The application will be available at `http://localhost:5173` (or the next available port).
+The application will be available at `http://localhost:5173`.
 
-### 4. Running Tests
+## Testing
 
 This project uses `vitest` for testing. To run the test suite, use:
-
 ```bash
 npm test
 ```
 The tests cover data loading, error handling, and filtering logic. They run in a `jsdom` environment to simulate a browser.
-
-## How to use real HTML templates?
-
-Having HTML as a string in JavaScript is not ideal. Here are a few ways to manage HTML templates more effectively:
-
-### 1. Template Literals (Current Approach)
-
-This is what the code was initially using. It's a step up from string concatenation (`'<div>' + content + '</div>'`) because it allows for multi-line strings and easy variable injection.
-
--   **Pros:** Built into JavaScript (ES6), no dependencies needed. Good for very small, simple components.
--   **Cons:** Can still be hard to read and maintain for complex HTML. Doesn't have built-in escaping, which can be a security risk (XSS) if you're injecting user-provided content.
-
-### 2. The `<template>` HTML Element (Recommended for this project)
-
-The `<template>` element is a native HTML tag designed to hold HTML that isn't rendered immediately but can be cloned and used by JavaScript. This is a great way to separate your HTML structure from your JavaScript logic without adding any new libraries.
-
--   **Pros:** Native browser feature, no dependencies. Clean separation of HTML and JS. The content is parsed as HTML, so you can write it naturally.
--   **Cons:** Requires you to manually select the template, clone it, and populate it with data in your JavaScript.
-
-**Example Implementation:**
-
-You would add this to your `index.html`:
-
-```html
-<template id="product-card-template">
-  <div class="column is-one-third">
-    <div class="card">
-      <div class="card-content">
-        <p class="title is-4" data-template-field="name"></p>
-        <div class="content">
-          <p><strong>Color:</strong> <span data-template-field="color"></span></p>
-          <p><strong>Material:</strong> <span data-template-field="material"></span></p>
-          <p><strong>Weight:</strong> <span data-template-field="weight"></span> kg</p>
-          <p class="subtitle is-5 has-text-weight-bold mt-4" data-template-field="price"></p>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-```
-
-And then in your JavaScript (`renderProductCards`):
-
-```javascript
-function renderProductCards(products) {
-  const container = document.getElementById('product-list-container');
-  const template = document.getElementById('product-card-template');
-  container.innerHTML = '';
-
-  products.forEach(product => {
-    const cardClone = template.content.cloneNode(true);
-    cardClone.querySelector('[data-template-field="name"]').textContent = product.name;
-    cardClone.querySelector('[data-template-field="color"]').textContent = product.color;
-    // ...and so on for other fields
-    container.appendChild(cardClone);
-  });
-}
-```
-
-### 3. Dedicated Templating Libraries
-
-For more complex applications, you might use a dedicated library like [Handlebars.js](https://handlebarsjs.com/) or [Mustache.js](https://github.com/janl/mustache.js). These provide more advanced features like loops, conditionals, and partials directly in the template files.
-
--   **Pros:** Powerful features, logic-less templates, pre-compilation for performance.
--   **Cons:** Adds another dependency to your project. Introduces a new syntax to learn.
-
-### 4. Frontend Frameworks
-
-Modern frontend frameworks like [Vue](https://vuejs.org/), [React](https://react.dev/), or [Svelte](https://svelte.dev/) are the ultimate solution for this problem. They are built around the concept of components, where the HTML, CSS, and JavaScript for a piece of the UI are encapsulated together. This is the standard for building complex web applications.
-
--   **Pros:** Manages the entire UI layer, state management, and rendering efficiently.
--   **Cons:** A much larger dependency and a significant learning curve. Overkill for a simple project like this one.
