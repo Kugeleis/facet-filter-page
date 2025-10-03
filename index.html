@@ -8,31 +8,47 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 
-<body class="bg-gray-100 font-sans antialiased">
-  <nav class="bg-white shadow-md">
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <div class="flex-shrink-0">
-          <h1 class="text-2xl font-bold text-gray-900">Product Showcase</h1>
+<body>
+  <section class="section">
+    <div class="container">
+      <h1 class="title">Product Showcase</h1>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="columns">
+        <div class="column is-one-quarter">
+          <aside id="filter-sidebar" class="menu box">
+            <p class="menu-label">Filters</p>
+            <div id="filter-groups-container"></div>
+          </aside>
+        </div>
+        <div class="column">
+          <div id="product-list-container" class="columns is-multiline">
+            </div>
         </div>
       </div>
     </div>
-  </nav>
-
-  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-12 gap-8">
-      <aside id="filter-sidebar" class="col-span-3 lg:col-span-4">
-        <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm h-fit">
-          <h2 class="text-xl font-bold text-gray-800 mb-5 border-b border-gray-200 pb-3">Filters</h2>
-          <div id="filter-groups-container"></div> <!-- Container for filter groups -->
-        </div>
-      </aside>
-
-      <main id="product-list-container" class="col-span-9 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></main>
-    </div>
-  </div>
+  </section>
 
   <script type="module" src="/src/main.js"></script>
+
+  <template id="product-card-template">
+    <div class="column is-one-third">
+      <div class="card">
+        <div class="card-content">
+          <p class="title is-4" data-template-field="name"></p>
+          <div class="content">
+            <p><strong>Color:</strong> <span data-template-field="color"></span></p>
+            <p><strong>Material:</strong> <span data-template-field="material"></span></p>
+            <p><strong>Weight:</strong> <span data-template-field="weight"></span> kg</p>
+            <p class="subtitle is-5 has-text-weight-bold mt-4" data-template-field="price"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
 </body>
 
 </html>

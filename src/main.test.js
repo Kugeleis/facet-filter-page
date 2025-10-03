@@ -108,7 +108,22 @@ describe('Application Logic', () => {
                     <div id="facet-container-color"></div>
                     <div id="facet-container-material"></div>
                 </div>
-                <div id="product-list-container"></div>
+                <div id="product-list-container" class="columns is-multiline"></div>
+                <template id="product-card-template">
+                  <div class="column is-one-third">
+                    <div class="card">
+                      <div class="card-content">
+                        <p class="title is-4" data-template-field="name"></p>
+                        <div class="content">
+                          <p><strong>Color:</strong> <span data-template-field="color"></span></p>
+                          <p><strong>Material:</strong> <span data-template-field="material"></span></p>
+                          <p><strong>Weight:</strong> <span data-template-field="weight"></span> kg</p>
+                          <p class="subtitle is-5 has-text-weight-bold mt-4" data-template-field="price"></p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
             </body>`;
 
         fetch.mockResolvedValue({
@@ -131,7 +146,7 @@ describe('Application Logic', () => {
 
             const productContainer = document.getElementById('product-list-container');
             expect(fetch).toHaveBeenCalledWith('/products.json');
-            expect(productContainer.querySelectorAll('.product-card').length).toBe(2);
+            expect(productContainer.querySelectorAll('.card').length).toBe(2);
             expect(productContainer.innerHTML).toContain('Product 1');
             expect(productContainer.innerHTML).toContain('Product 2');
         });
@@ -154,7 +169,7 @@ describe('Application Logic', () => {
             mainModule.updateCategoricalFilters('color', 'Red', true);
             mainModule.applyFilters();
 
-            const cards = document.querySelectorAll('.product-card');
+            const cards = document.querySelectorAll('.card');
             expect(cards.length).toBe(1);
             expect(cards[0].innerHTML).toContain('Product 1');
         });
@@ -164,11 +179,11 @@ describe('Application Logic', () => {
 
             mainModule.updateCategoricalFilters('color', 'Red', true);
             mainModule.applyFilters();
-            expect(document.querySelectorAll('.product-card').length).toBe(1);
+            expect(document.querySelectorAll('.card').length).toBe(1);
 
             mainModule.updateCategoricalFilters('color', 'Red', false);
             mainModule.applyFilters();
-            expect(document.querySelectorAll('.product-card').length).toBe(2);
+            expect(document.querySelectorAll('.card').length).toBe(2);
         });
     });
 });
