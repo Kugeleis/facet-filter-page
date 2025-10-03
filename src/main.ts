@@ -54,6 +54,16 @@ const uiConfig: UIGroup[] = [
 let itemsjsInstance: ItemsJs<Product>;
 let currentFilters: Filters = {};
 let productData: Product[] = [];
+let cardTemplateMapping: TemplateMapping[] = [];
+
+// --- NEW INTERFACES & CONFIG ---
+export interface TemplateMapping {
+  field: string;
+  property: keyof Product;
+  prefix?: string;
+  suffix?: string;
+  format?: (value: any) => string;
+}
 
 // --- UI GENERATION & INTEGRATION ---
 
@@ -174,7 +184,7 @@ function applyFilters(): void {
   const facets = results.data.aggregations;
   console.log("Facets data:", JSON.stringify(facets, null, 2));
 
-  renderProductCards(results.data.items);
+  renderProductCards(results.data.items, cardTemplateMapping);
 
   if (facets && facets['color']) {
     renderFacets(facets['color'].buckets, 'color');
@@ -209,7 +219,7 @@ function renderFacets(buckets: any[], propId: keyof Product): void {
   container.innerHTML = html;
 }
 
-function renderProductCards(products: Product[]): void {
+function renderProductCards(products: Product[], templateMapping: TemplateMapping[]): void {
   const container = document.getElementById('product-list-container');
   const template = document.getElementById('product-card-template') as HTMLTemplateElement;
   if (!container || !template) return;
@@ -223,11 +233,21 @@ function renderProductCards(products: Product[]): void {
 
   products.forEach(product => {
     const cardClone = template.content.cloneNode(true) as DocumentFragment;
-    (cardClone.querySelector('[data-template-field="name"]') as HTMLElement).textContent = product.name;
-    (cardClone.querySelector('[data-template-field="color"]') as HTMLElement).textContent = product.color;
-    (cardClone.querySelector('[data-template-field="material"]') as HTMLElement).textContent = product.material;
-    (cardClone.querySelector('[data-template-field="weight"]') as HTMLElement).textContent = product.weight_kg.toString();
-    (cardClone.querySelector('[data-template-field="price"]') as HTMLElement).textContent = `$${product.price.toFixed(2)}`;
+
+    templateMapping.forEach(mapping => {
+      const element = cardClone.querySelector(`[data-template-field="${mapping.field}"]`) as HTMLElement;
+      if (element) {
+        const rawValue = product[mapping.property];
+        let displayValue = rawValue;
+
+        if (mapping.format) {
+          displayValue = mapping.format(rawValue);
+        }
+
+        element.textContent = `${mapping.prefix || ''}${displayValue}${mapping.suffix || ''}`;
+      }
+    });
+
     container.appendChild(cardClone);
   });
 }
@@ -241,11 +261,34 @@ async function initializeApp(): Promise<void> {
   if (!filterGroupsContainer || !productContainer) return;
 
   try {
-    const response = await fetch('/products.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}. Failed to load products.json. Did you run 'npm run data-build'?`);
+    const [productsResponse, templateResponse] = await Promise.all([
+      fetch('/products.json'),
+      fetch('/template-config.json')
+    ]);
+
+    if (!productsResponse.ok) {
+      throw new Error(`HTTP error! status: ${productsResponse.status}. Failed to load products.json. Did you run 'npm run data-build'?`);
     }
-    productData = await response.json();
+    if (!templateResponse.ok) {
+      throw new Error(`HTTP error! status: ${templateResponse.status}. Failed to load template-config.json.`);
+    }
+
+    productData = await productsResponse.json();
+    const rawTemplateConfig = await templateResponse.json();
+
+    // Parse format strings into functions
+    cardTemplateMapping = rawTemplateConfig.map((mapping: any) => {
+      if (mapping.format && typeof mapping.format === 'string') {
+        const match = mapping.format.match(/toFixed\((\d+)\)/);
+        if (match) {
+          const precision = parseInt(match[1], 10);
+          // Return a new object with the format property as a function
+          return { ...mapping, format: (value: number) => value.toFixed(precision) };
+        }
+      }
+      return mapping;
+    });
+
     console.log("Unfiltered (all) items:", productData);
   } catch (error: any) {
     console.error("Fatal Error:", error.message);

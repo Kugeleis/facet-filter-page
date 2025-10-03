@@ -11,6 +11,14 @@ const mockProductData: Product[] = [
   { id: 2, name: 'Product 2', color: 'Blue', material: 'Plastic', price: 200, weight_kg: 20 },
 ];
 
+const mockTemplateConfig = [
+  { field: "name", property: "name" },
+  { field: "color", property: "color" },
+  { field: "material", property: "material" },
+  { field: "weight", property: "weight_kg", suffix: " kg" },
+  { field: "price", property: "price", prefix: "$", format: "toFixed(2)" },
+];
+
 const mockSearch = vi.fn((query?: { filters?: Filters }) => {
     let filteredItems = [...mockProductData];
     const filters = query?.filters || {};
@@ -129,9 +137,20 @@ describe('Application Logic', () => {
             </body>`;
 
         // Mock the fetch call to return our mock data
-        (fetch as Mock).mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve([...mockProductData]),
+        (fetch as Mock).mockImplementation((url: string) => {
+            if (url === '/products.json') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve([...mockProductData]),
+                });
+            }
+            if (url === '/template-config.json') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve([...mockTemplateConfig]),
+                });
+            }
+            return Promise.reject(new Error(`Unhandled fetch request: ${url}`));
         });
 
         // Re-import the module before each test to get a fresh state
@@ -148,19 +167,32 @@ describe('Application Logic', () => {
 
             const productContainer = document.getElementById('product-list-container');
             expect(fetch).toHaveBeenCalledWith('/products.json');
+            expect(fetch).toHaveBeenCalledWith('/template-config.json');
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
             expect(productContainer?.innerHTML).toContain('Product 1');
             expect(productContainer?.innerHTML).toContain('Product 2');
         });
 
-        it('should handle fetch error gracefully', async () => {
-            (fetch as Mock).mockRejectedValue(new Error('Network failure'));
+        it('should handle fetch error gracefully if products.json fails', async () => {
+            // Mock a failure for only the products.json fetch
+            (fetch as Mock).mockImplementation((url: string) => {
+                if (url === '/products.json') {
+                    return Promise.resolve({ ok: false, status: 404 });
+                }
+                if (url === '/template-config.json') {
+                    return Promise.resolve({
+                        ok: true,
+                        json: () => Promise.resolve(mockTemplateConfig),
+                    });
+                }
+                return Promise.reject(new Error(`Unhandled fetch: ${url}`));
+            });
 
             await mainModule.initializeApp();
 
             const productContainer = document.getElementById('product-list-container');
             expect(productContainer?.innerHTML).toContain('Application Error!');
-            expect(productContainer?.innerHTML).toContain('Network failure');
+            expect(productContainer?.innerHTML).toContain('Failed to load products.json');
         });
     });
 
