@@ -63,12 +63,13 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
 function generatePropertyFilter(property, parentElement) {
   const propId = property.id;
   const filterDiv = document.createElement('div');
-  filterDiv.className = 'p-3 border rounded-md mb-3 bg-gray-50';
-  filterDiv.innerHTML = `<h4 class="font-semibold text-sm mb-2 text-gray-700">${property.title}</h4>`;
+  filterDiv.className = 'mb-6';
+  filterDiv.innerHTML = `<h4 class="font-semibold text-lg mb-3 text-gray-800">${property.title}</h4>`;
 
   if (property.type === "categorical") {
     const facetContainer = document.createElement('div');
     facetContainer.id = `facet-container-${propId}`;
+    facetContainer.className = 'space-y-2';
     filterDiv.appendChild(facetContainer);
     // Event delegation for checkboxes
     facetContainer.addEventListener('change', (e) => {
@@ -160,14 +161,15 @@ function renderFacets(facets) {
 
       // Use Tailwind classes for styling
       html += `
-                <label class="flex items-center space-x-2 text-sm">
-                    <input type="checkbox" 
-                           value="${facetValue.key}" 
-                           ${isChecked ? 'checked' : ''}
-                           class="rounded text-blue-500 border-gray-300 focus:ring-blue-500">
-                    <span>${facetValue.key} (${facetValue.doc_count})</span>
-                </label>
-            `;
+        <label class="flex items-center space-x-3 text-gray-700 hover:text-gray-900 cursor-pointer">
+          <input type="checkbox" 
+                 value="${facetValue.key}" 
+                 ${isChecked ? 'checked' : ''}
+                 class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <span class="text-sm">${facetValue.key}</span>
+          <span class="text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5">${facetValue.doc_count}</span>
+        </label>
+      `;
     });
     container.innerHTML = html;
   }
@@ -185,16 +187,20 @@ function renderProductCards(products) {
   products.forEach(product => {
     // Use Tailwind for card styling
     const card = document.createElement('div');
-    card.className = 'product-card bg-white p-6 shadow-md rounded-lg hover:shadow-xl transition-shadow';
+    card.className = 'product-card bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 ease-in-out';
     card.innerHTML = `
-            <h3 class="text-lg font-semibold text-blue-600">${product.name}</h3>
-            <div class="mt-2 text-sm text-gray-600">
-                <p><strong>Color:</strong> ${product.color}</p>
-                <p><strong>Material:</strong> ${product.material}</p>
-                <p><strong>Weight:</strong> ${product.weight_kg} kg</p>
-            </div>
-            <p class="text-xl font-bold text-green-600 mt-3">$${product.price.toFixed(2)}</p>
-        `;
+      <div class="p-6">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">${product.name}</h3>
+        <div class="text-sm text-gray-600 space-y-1">
+          <p><strong>Color:</strong> <span class="font-medium text-gray-800">${product.color}</span></p>
+          <p><strong>Material:</strong> <span class="font-medium text-gray-800">${product.material}</span></p>
+          <p><strong>Weight:</strong> <span class="font-medium text-gray-800">${product.weight_kg} kg</span></p>
+        </div>
+        <div class="mt-4 flex items-center justify-between">
+          <p class="text-2xl font-extrabold text-gray-900">$${product.price.toFixed(2)}</p>
+        </div>
+      </div>
+    `;
     container.appendChild(card);
   });
 }

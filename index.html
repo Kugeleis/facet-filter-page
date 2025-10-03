@@ -8,20 +8,27 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 
-<body class="bg-gray-50 font-sans antialiased">
-  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <header class="mb-8">
-      <h1 class="text-4xl font-extrabold tracking-tight text-gray-900">Product Showcase</h1>
-      <p class="mt-2 text-lg text-gray-600">Filter and discover our amazing products.</p>
-    </header>
+<body class="bg-gray-100 font-sans antialiased">
+  <nav class="bg-white shadow-md">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex-shrink-0">
+          <h1 class="text-2xl font-bold text-gray-900">Product Showcase</h1>
+        </div>
+      </div>
+    </div>
+  </nav>
 
-    <div class="flex flex-col lg:flex-row gap-8">
-      <aside id="filter-sidebar" class="lg:w-1/4 xl:w-1/5 p-6 bg-white border border-gray-200 rounded-lg shadow-sm h-fit">
-        <h2 class="text-xl font-bold text-gray-800 mb-5 border-b border-gray-200 pb-3">Filters</h2>
-        <div id="filter-groups-container"></div> <!-- Container for filter groups -->
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-12 gap-8">
+      <aside id="filter-sidebar" class="col-span-3 lg:col-span-4">
+        <div class="p-6 bg-white border border-gray-200 rounded-lg shadow-sm h-fit">
+          <h2 class="text-xl font-bold text-gray-800 mb-5 border-b border-gray-200 pb-3">Filters</h2>
+          <div id="filter-groups-container"></div> <!-- Container for filter groups -->
+        </div>
       </aside>
 
-      <main id="product-list-container" class="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></main>
+      <main id="product-list-container" class="col-span-9 lg:col-span-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></main>
     </div>
   </div>
 
