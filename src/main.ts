@@ -32,6 +32,7 @@ export type Filters = Record<string, CategoricalFilter | ContinuousFilter>;
 let itemsjsInstance: ItemsJs<Product>;
 let currentFilters: Filters = {};
 let productData: Product[] = [];
+let sliderInstances: Record<string, NoUiSliderAPI> = {}; // To hold slider instances
 let cardTemplateMapping: TemplateMapping[] = [];
 let uiConfig: UIGroup[] = [];
 let noProductsMessage: string = "No products match your current filters."; // Add default
@@ -55,7 +56,7 @@ function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, pa
   sliderDiv.id = `slider-${propId}`;
   parentElement.appendChild(sliderDiv);
 
-  noUiSlider.create(sliderDiv, {
+  const slider = noUiSlider.create(sliderDiv, {
     start: [minVal, maxVal],
     connect: true,
     range: { 'min': minVal, 'max': maxVal },
@@ -67,10 +68,12 @@ function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, pa
     }
   });
 
-  (sliderDiv as any).noUiSlider.on('change', (values: (string | number)[]) => {
+  slider.on('change', (values: (string | number)[]) => {
     currentFilters[propId] = [parseFloat(values[0] as string), parseFloat(values[1] as string)];
     applyFilters();
   });
+
+  sliderInstances[propId] = slider; // Store the instance
 }
 
 /**
@@ -128,6 +131,18 @@ function updateCategoricalFilters(propId: string, value: string, isChecked: bool
     currentFilters[propId] = current;
   }
 
+  applyFilters();
+}
+
+function resetFilters(): void {
+  currentFilters = {};
+
+  // Reset all the noUiSlider instances
+  for (const propId in sliderInstances) {
+    sliderInstances[propId].reset();
+  }
+
+  // Re-apply filters, which will now be empty
   applyFilters();
 }
 
@@ -268,15 +283,19 @@ async function initializeApp(): Promise<void> {
   const mainTitleElement = document.getElementById('main-title');
   const filtersLabelElement = document.getElementById('filters-label');
   const appVersionElement = document.getElementById('app-version');
+  const resetButton = document.getElementById('reset-filters-button'); // Get the reset button
+
 
   if (appVersionElement) {
     appVersionElement.textContent = __APP_VERSION__;
   }
 
-  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement) {
+  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement || !resetButton) {
     console.error("A required element was not found in the DOM.");
     return;
   }
+
+  resetButton.addEventListener('click', resetFilters);
 
   try {
     // --- 1. Fetch Setup Configuration ---
@@ -398,5 +417,6 @@ export {
   currentFilters,
   uiConfig,
   renderProductCards,
-  renderFacets
+  renderFacets,
+  resetFilters
 };

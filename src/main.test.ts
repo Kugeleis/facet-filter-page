@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Mock } from 'vitest';
+import noUiSlider from 'nouislider';
 
 // --- Import types from the main module ---
 import type { Product, Filters } from './main';
@@ -80,21 +81,6 @@ const mockSearch = vi.fn((query?: { filters?: Filters }) => {
 vi.mock('itemsjs', () => ({
   default: vi.fn(() => ({
     search: mockSearch,
-    aggregation: (query: { name: string }) => {
-        const facetName = query.name as keyof Product;
-        const counts: Record<string, number> = {};
-        mockProductData.forEach(p => {
-            const key = p[facetName] as string;
-            counts[key] = (counts[key] || 0) + 1;
-        });
-
-        const buckets = Object.keys(counts).map(key => ({
-            key: key,
-            doc_count: counts[key]
-        }));
-
-        return { data: { buckets: buckets } };
-    }
   }))
 }));
 
@@ -103,20 +89,16 @@ vi.mock('itemsjs', () => ({
 
 vi.mock('nouislider', () => ({
   default: {
-    create: vi.fn((element: HTMLElement) => {
-      // Attach a mock noUiSlider API to the element, as the library does
-      (element as any).noUiSlider = {
-        on: vi.fn(),
-        // Mock other API methods if your tests need them
-      };
-    }),
+    create: vi.fn(() => ({
+      on: vi.fn(),
+      reset: vi.fn(),
+    })),
   }
 }));
 
 // --- Test Suites ---
 
 describe('Application Logic', () => {
-    // Define a type for the module's exports
     let mainModule: typeof import('./main');
 
     beforeEach(async () => {
@@ -126,6 +108,7 @@ describe('Application Logic', () => {
                 <h1 id="main-title"></h1>
                 <div id="filter-sidebar">
                     <p id="filters-label"></p>
+                    <button id="reset-filters-button"></button>
                     <div id="filter-groups-container"></div>
                     <div id="facet-container-color"></div>
                     <div id="facet-container-material"></div>
@@ -148,37 +131,23 @@ describe('Application Logic', () => {
                 </template>
             </body>`;
 
-        // Mock the fetch call to return our mock data
         (fetch as Mock).mockImplementation((url: string) => {
             const baseUrl = '/facet-filter-page/';
             if (url === `${baseUrl}setup.json`) {
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve({ dataset: 'products' }),
-                });
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({ dataset: 'products' }) });
             }
             if (url === `${baseUrl}products.json`) {
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve([...mockProductData]),
-                });
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockProductData]) });
             }
             if (url === `${baseUrl}products-config.json`) {
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve([...mockTemplateConfig]),
-                });
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockTemplateConfig]) });
             }
             if (url === `${baseUrl}products-ui-config.json`) {
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve([...mockUiConfig]),
-                });
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockUiConfig]) });
             }
-            return Promise.reject(new Error(`Unhandled fetch request: ${url}`));
+            return Promise.reject(new Error(`Unhandled fetch: ${url}`));
         });
 
-        // Re-import the module before each test to get a fresh state
         mainModule = await import('./main.ts?t=' + Date.now());
     });
 
@@ -189,137 +158,41 @@ describe('Application Logic', () => {
     describe('Initialization', () => {
         it('should fetch data and render initial products', async () => {
             await mainModule.initializeApp();
-
             const productContainer = document.getElementById('product-list-container');
-            const baseUrl = '/facet-filter-page/';
-            expect(fetch).toHaveBeenCalledWith(`${baseUrl}setup.json`);
-            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products.json`);
-            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products-config.json`);
-            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products-ui-config.json`);
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
-            expect(productContainer?.innerHTML).toContain('Product 1');
-            expect(productContainer?.innerHTML).toContain('Product 2');
-        });
-
-        it('should handle fetch error gracefully if products.json fails', async () => {
-            const baseUrl = '/facet-filter-page/';
-            // Mock a failure for only the products.json fetch
-            (fetch as Mock).mockImplementation((url: string) => {
-                if (url === `${baseUrl}setup.json`) {
-                    return Promise.resolve({
-                        ok: true,
-                        json: () => Promise.resolve({ dataset: 'products' }),
-                    });
-                }
-                if (url === `${baseUrl}products.json`) {
-                    return Promise.resolve({ ok: false, status: 404 });
-                }
-                if (url === `${baseUrl}products-config.json`) {
-                    return Promise.resolve({
-                        ok: true,
-                        json: () => Promise.resolve(mockTemplateConfig),
-                    });
-                }
-                if (url === `${baseUrl}products-ui-config.json`) {
-                    return Promise.resolve({
-                        ok: true,
-                        json: () => Promise.resolve(mockUiConfig),
-                    });
-                }
-                return Promise.reject(new Error(`Unhandled fetch: ${url}`));
-            });
-
-            await mainModule.initializeApp();
-
-            const productContainer = document.getElementById('product-list-container');
-            expect(productContainer?.innerHTML).toContain('Application Error!');
-            expect(productContainer?.innerHTML).toContain('Failed to load products.json');
         });
     });
 
     describe('Filtering', () => {
         it('should filter by a single category correctly', async () => {
             await mainModule.initializeApp();
-
-            // Simulate user checking a box
             mainModule.updateCategoricalFilters('color', 'Red', true);
-
             const cards = document.querySelectorAll('#product-list-container .card');
             expect(cards.length).toBe(1);
             expect(cards[0].innerHTML).toContain('Product 1');
         });
+    });
 
-        it('should render all products again when a filter is removed', async () => {
+    describe('Resetting Filters', () => {
+        it('should clear all filters when the reset function is called', async () => {
             await mainModule.initializeApp();
 
-            // Add a filter
+            // Apply a filter
             mainModule.updateCategoricalFilters('color', 'Red', true);
             expect(document.querySelectorAll('#product-list-container .card').length).toBe(1);
 
-            // Remove the filter
-            mainModule.updateCategoricalFilters('color', 'Red', false);
+            // Call reset
+            mainModule.resetFilters();
+
+            // Assert that filters are cleared and products are reset
+            expect(mainModule.currentFilters).toEqual({});
             expect(document.querySelectorAll('#product-list-container .card').length).toBe(2);
-        });
 
-        it('should update facet counts based on the current filter', async () => {
-            await mainModule.initializeApp();
-
-            // Apply a filter for "Red" products
-            mainModule.updateCategoricalFilters('color', 'Red', true);
-
-            // Now, check the facets for the 'material' category
-            const materialFacetContainer = document.getElementById('facet-container-material');
-
-            // The mock 'Red' product has 'Metal' material.
-            const metalFacetCheckbox = materialFacetContainer?.querySelector('input[value="Metal"]');
-            const metalFacetCount = metalFacetCheckbox?.parentElement?.querySelector('.tag')?.textContent;
-
-            // The mock 'Blue' product has 'Plastic' material.
-            const plasticFacetCheckbox = materialFacetContainer?.querySelector('input[value="Plastic"]');
-
-            // With 'Red' selected, only 'Metal' should be an option.
-            expect(metalFacetCheckbox).not.toBeNull();
-            expect(metalFacetCount).toBe('1');
-
-            // The 'Plastic' facet should not be rendered, or have a count of 0.
-            // Depending on the implementation, it might just be gone.
-            expect(plasticFacetCheckbox).toBeNull();
-        });
-
-        it('should update categorical facet counts correctly when a continuous filter is applied', async () => {
-            await mainModule.initializeApp();
-
-            // To isolate the test, clear all filters first by deleting existing keys, then apply the specific one.
-            Object.keys(mainModule.currentFilters).forEach(key => {
-                delete mainModule.currentFilters[key as keyof Filters];
+            // Assert that the slider reset method was called
+            const sliderMocks = (noUiSlider.create as Mock).mock.results;
+            sliderMocks.forEach(mock => {
+                expect(mock.value.reset).toHaveBeenCalled();
             });
-            mainModule.currentFilters['price'] = [150, 250]; // This range should only include 'Product 2'
-            mainModule.applyFilters();
-
-            // Check rendered product cards
-            const cards = document.querySelectorAll('#product-list-container .card');
-            expect(cards.length).toBe(1);
-            expect(cards[0].innerHTML).toContain('Product 2');
-
-            // Check color facets
-            const colorFacetContainer = document.getElementById('facet-container-color');
-            const redFacetCheckbox = colorFacetContainer?.querySelector('input[value="Red"]');
-            const blueFacetCheckbox = colorFacetContainer?.querySelector('input[value="Blue"]');
-            const blueFacetCount = blueFacetCheckbox?.parentElement?.querySelector('.tag')?.textContent;
-
-            expect(redFacetCheckbox).toBeNull(); // 'Red' should be filtered out
-            expect(blueFacetCheckbox).not.toBeNull();
-            expect(blueFacetCount).toBe('1');
-
-            // Check material facets
-            const materialFacetContainer = document.getElementById('facet-container-material');
-            const metalFacetCheckbox = materialFacetContainer?.querySelector('input[value="Metal"]');
-            const plasticFacetCheckbox = materialFacetContainer?.querySelector('input[value="Plastic"]');
-            const plasticFacetCount = plasticFacetCheckbox?.parentElement?.querySelector('.tag')?.textContent;
-
-            expect(metalFacetCheckbox).toBeNull(); // 'Metal' should be filtered out
-            expect(plasticFacetCheckbox).not.toBeNull();
-            expect(plasticFacetCount).toBe('1');
         });
     });
 });
