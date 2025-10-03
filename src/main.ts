@@ -275,7 +275,7 @@ async function initializeApp(): Promise<void> {
 
   try {
     // --- 1. Fetch Setup Configuration ---
-    const setupResponse = await fetch('/setup.json');
+    const setupResponse = await fetch(`${import.meta.env.BASE_URL}setup.json`);
     if (!setupResponse.ok) {
       throw new Error(`HTTP error! status: ${setupResponse.status}. Failed to load setup.json.`);
     }
@@ -306,9 +306,9 @@ async function initializeApp(): Promise<void> {
 
     // --- 2. Fetch Dataset-specific Files ---
     const [productsResponse, templateResponse, uiConfigResponse] = await Promise.all([
-      fetch(`/${dataset}.json`),
-      fetch(`/${dataset}-config.json`),
-      fetch(`/${dataset}-ui-config.json`),
+      fetch(`${import.meta.env.BASE_URL}${dataset}.json`),
+      fetch(`${import.meta.env.BASE_URL}${dataset}-config.json`),
+      fetch(`${import.meta.env.BASE_URL}${dataset}-ui-config.json`),
     ]);
 
     // --- 3. Validate Responses ---
