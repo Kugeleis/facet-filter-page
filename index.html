@@ -1,21 +1,21 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>facet-filter-page</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vite Facet Filter App</title>
+  <link rel="stylesheet" href="/src/style.css">
 </head>
 
-<body>
-  <div id="app">
-  </div>
-  <div>
-    <h1 class="text-3xl font-bold underline">
-      Hello tailwind!
-    </h1>
+<body class="bg-gray-100 p-8">
+  <div class="max-w-7xl mx-auto flex gap-6">
 
+    <aside id="filter-sidebar" class="w-64 p-4 bg-white shadow-lg rounded-lg h-fit">
+      <h2 class="text-xl font-bold mb-4 border-b pb-2">Filter Products</h2>
+    </aside>
+
+    <main id="product-list-container" class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
   </div>
 
   <script type="module" src="/src/main.js"></script>

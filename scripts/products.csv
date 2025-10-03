@@ -1,0 +1,8 @@
+id,name,color,material,weight_kg,price
+1,Sedan X,Red,Leather,1500,35000.00
+2,Truck Y,Blue,Vinyl,2100,45000.00
+3,Hatch Z,Red,Cloth,1200,22000.00
+4,Sedan A,Black,Leather,1600,38000.00
+5,Truck B,Blue,Vinyl,2200,50000.00
+6,Coupe C,Black,Cloth,1450,29500.00
+7,Van D,White,Vinyl,2500,40000.00
