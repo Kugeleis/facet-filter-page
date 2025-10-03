@@ -32,29 +32,12 @@ type CategoricalFilter = string[];
 type ContinuousFilter = [number, number];
 export type Filters = Record<string, CategoricalFilter | ContinuousFilter>;
 
-// --- CONFIGURATION ---
-const uiConfig: UIGroup[] = [
-  {
-    groupName: "Vehicle Details",
-    properties: [
-      { id: "color", title: "Color", type: "categorical" },
-      { id: "material", title: "Material", type: "categorical" },
-    ]
-  },
-  {
-    groupName: "Performance & Cost",
-    properties: [
-      { id: "weight_kg", title: "Weight (kg)", type: "continuous" },
-      { id: "price", title: "Price ($)", type: "continuous" }
-    ]
-  }
-];
-
 // --- STATE AND INSTANCES ---
 let itemsjsInstance: ItemsJs<Product>;
 let currentFilters: Filters = {};
 let productData: Product[] = [];
 let cardTemplateMapping: TemplateMapping[] = [];
+let uiConfig: UIGroup[] = [];
 
 // --- NEW INTERFACES & CONFIG ---
 export interface TemplateMapping {
@@ -181,17 +164,36 @@ function applyFilters(): void {
 
   console.log("Filtered items:", results.data.items);
 
-  const facets = results.data.aggregations;
-  console.log("Facets data:", JSON.stringify(facets, null, 2));
+  // --- Manual Aggregation Recalculation ---
+  const recalculateAggregations = (items: Product[]) => {
+    const newAggregations: Record<string, { buckets: { key: string; doc_count: number }[] }> = {};
+    const categoricalProps = uiConfig.flatMap(g => g.properties).filter(p => p.type === 'categorical');
+
+    categoricalProps.forEach(prop => {
+      const counts: Record<string, number> = {};
+      items.forEach(item => {
+        const value = item[prop.id] as string;
+        if (value) {
+          counts[value] = (counts[value] || 0) + 1;
+        }
+      });
+      newAggregations[prop.id] = {
+        buckets: Object.entries(counts).map(([key, count]) => ({ key, doc_count: count }))
+      };
+    });
+
+    return newAggregations;
+  };
+
+  const finalFacets = recalculateAggregations(results.data.items);
+  console.log("Recalculated Facets data:", JSON.stringify(finalFacets, null, 2));
 
   renderProductCards(results.data.items, cardTemplateMapping);
 
-  if (facets && facets['color']) {
-    renderFacets(facets['color'].buckets, 'color');
-  }
-  if (facets && facets['material']) {
-    renderFacets(facets['material'].buckets, 'material');
-  }
+  // --- Render recalculated facets ---
+  Object.keys(finalFacets).forEach(propId => {
+    renderFacets(finalFacets[propId].buckets, propId as keyof Product);
+  });
 }
 
 function renderFacets(buckets: any[], propId: keyof Product): void {
@@ -261,9 +263,10 @@ async function initializeApp(): Promise<void> {
   if (!filterGroupsContainer || !productContainer) return;
 
   try {
-    const [productsResponse, templateResponse] = await Promise.all([
+    const [productsResponse, templateResponse, uiConfigResponse] = await Promise.all([
       fetch('/products.json'),
-      fetch('/products-config.json')
+      fetch('/products-config.json'),
+      fetch('/ui-config.json'),
     ]);
 
     if (!productsResponse.ok) {
@@ -272,8 +275,12 @@ async function initializeApp(): Promise<void> {
     if (!templateResponse.ok) {
       throw new Error(`HTTP error! status: ${templateResponse.status}. Failed to load template-config.json.`);
     }
+    if (!uiConfigResponse.ok) {
+      throw new Error(`HTTP error! status: ${uiConfigResponse.status}. Failed to load ui-config.json.`);
+    }
 
     productData = await productsResponse.json();
+    uiConfig = await uiConfigResponse.json();
     const rawTemplateConfig = await templateResponse.json();
 
     // Parse format strings into functions
