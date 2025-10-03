@@ -8,14 +8,21 @@
   <link rel="stylesheet" href="/src/style.css">
 </head>
 
-<body class="bg-gray-100 p-8">
-  <div class="max-w-7xl mx-auto flex gap-6">
+<body class="bg-gray-50 font-sans antialiased">
+  <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <header class="mb-8">
+      <h1 class="text-4xl font-extrabold tracking-tight text-gray-900">Product Showcase</h1>
+      <p class="mt-2 text-lg text-gray-600">Filter and discover our amazing products.</p>
+    </header>
 
-    <aside id="filter-sidebar" class="w-64 p-4 bg-white shadow-lg rounded-lg h-fit">
-      <h2 class="text-xl font-bold mb-4 border-b pb-2">Filter Products</h2>
-    </aside>
+    <div class="flex flex-col lg:flex-row gap-8">
+      <aside id="filter-sidebar" class="lg:w-1/4 xl:w-1/5 p-6 bg-white border border-gray-200 rounded-lg shadow-sm h-fit">
+        <h2 class="text-xl font-bold text-gray-800 mb-5 border-b border-gray-200 pb-3">Filters</h2>
+        <div id="filter-groups-container"></div> <!-- Container for filter groups -->
+      </aside>
 
-    <main id="product-list-container" class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></main>
+      <main id="product-list-container" class="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></main>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
