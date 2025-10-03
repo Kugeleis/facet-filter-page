@@ -1,0 +1,72 @@
+# Taskfile.yaml
+
+version: "3"
+
+vars:
+  PY_SCRIPT: python3 scripts/generate_json.py
+  VITE_DEV: npm run dev
+  VITE_BUILD: npm run build
+  NPM_INSTALL: npm install
+
+tasks:
+  # ----------------------------------------------------
+  # 1. SETUP AND INSTALLATION
+  # ----------------------------------------------------
+  setup:
+    desc: Install all Node and Python dependencies.
+    cmds:
+      - echo "--- Installing Node Dependencies ---"
+      - "{{.NPM_INSTALL}}"
+      - echo "--- Checking Python Dependencies (Add 'pip install -r requirements.txt' if you have one) ---"
+
+  # ----------------------------------------------------
+  # 2. DATA MANAGEMENT (Daily Update)
+  # ----------------------------------------------------
+  data:
+    desc: Regenerate the src/products.json file from the source CSV.
+    cmds:
+      - echo "--- Regenerating Static JSON Data ---"
+      - "{{.PY_SCRIPT}}"
+
+  # ----------------------------------------------------
+  # 3. DEVELOPMENT AND TDD
+  # ----------------------------------------------------
+  dev:
+    desc: Regenerate data and start the Vite development server (with HMR).
+    deps:
+      - data # Ensure the latest data is present before starting
+    cmds:
+      - echo "--- Starting Vite Development Server ---"
+      - "{{.VITE_DEV}}"
+
+  test:
+    desc: Run all tests once.
+    cmds:
+      - echo "--- Running All Tests ---"
+      - npm run test
+
+  watch:
+    desc: Start Vitest in watch mode (ideal for TDD).
+    cmds:
+      - echo "--- Starting Vitest Watch Mode ---"
+      - npm run test:watch
+
+  # ----------------------------------------------------
+  # 4. DEPLOYMENT BUILD
+  # ----------------------------------------------------
+  build:
+    desc: Generate final optimized data and create the production build artifacts (in the 'dist' folder).
+    deps:
+      - data # Ensure the data is fresh
+    cmds:
+      - echo "--- Creating Production Build (Tailwind, JS, CSS optimized) ---"
+      - "{{.VITE_BUILD}}"
+
+  # ----------------------------------------------------
+  # 5. CLEANUP
+  # ----------------------------------------------------
+  clean:
+    desc: Remove node_modules, package-lock, and the dist folder.
+    cmds:
+      - rm -rf node_modules package-lock.json dist
+      - echo "Cleaned up project files."
