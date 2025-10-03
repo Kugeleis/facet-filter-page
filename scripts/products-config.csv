@@ -1,0 +1,6 @@
+field,property,prefix,suffix,format
+name,name,,
+color,color,,
+material,material,,
+weight,weight_kg,, kg,
+price,price,$,,toFixed(2)

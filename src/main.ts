@@ -263,7 +263,7 @@ async function initializeApp(): Promise<void> {
   try {
     const [productsResponse, templateResponse] = await Promise.all([
       fetch('/products.json'),
-      fetch('/template-config.json')
+      fetch('/products-config.json')
     ]);
 
     if (!productsResponse.ok) {

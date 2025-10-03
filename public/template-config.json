@@ -1,7 +1,25 @@
 [
-  { "field": "name", "property": "name" },
-  { "field": "color", "property": "color" },
-  { "field": "material", "property": "material" },
-  { "field": "weight", "property": "weight_kg", "suffix": " kg" },
-  { "field": "price", "property": "price", "prefix": "$", "format": "toFixed(2)" }
+  {
+    "field": "name",
+    "property": "name"
+  },
+  {
+    "field": "color",
+    "property": "color"
+  },
+  {
+    "field": "material",
+    "property": "material"
+  },
+  {
+    "field": "weight",
+    "property": "weight_kg",
+    "suffix": " kg"
+  },
+  {
+    "field": "price",
+    "property": "price",
+    "prefix": "$",
+    "format": "toFixed(2)"
+  }
 ]

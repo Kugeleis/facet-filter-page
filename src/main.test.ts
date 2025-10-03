@@ -144,7 +144,7 @@ describe('Application Logic', () => {
                     json: () => Promise.resolve([...mockProductData]),
                 });
             }
-            if (url === '/template-config.json') {
+            if (url === '/products-config.json') {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([...mockTemplateConfig]),
@@ -167,7 +167,7 @@ describe('Application Logic', () => {
 
             const productContainer = document.getElementById('product-list-container');
             expect(fetch).toHaveBeenCalledWith('/products.json');
-            expect(fetch).toHaveBeenCalledWith('/template-config.json');
+            expect(fetch).toHaveBeenCalledWith('/products-config.json');
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
             expect(productContainer?.innerHTML).toContain('Product 1');
             expect(productContainer?.innerHTML).toContain('Product 2');
@@ -179,7 +179,7 @@ describe('Application Logic', () => {
                 if (url === '/products.json') {
                     return Promise.resolve({ ok: false, status: 404 });
                 }
-                if (url === '/template-config.json') {
+                if (url === '/products-config.json') {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve(mockTemplateConfig),
