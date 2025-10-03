@@ -150,25 +150,26 @@ describe('Application Logic', () => {
 
         // Mock the fetch call to return our mock data
         (fetch as Mock).mockImplementation((url: string) => {
-            if (url === '/setup.json') {
+            const baseUrl = '/facet-filter-page/';
+            if (url === `${baseUrl}setup.json`) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve({ dataset: 'products' }),
                 });
             }
-            if (url === '/products.json') {
+            if (url === `${baseUrl}products.json`) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([...mockProductData]),
                 });
             }
-            if (url === '/products-config.json') {
+            if (url === `${baseUrl}products-config.json`) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([...mockTemplateConfig]),
                 });
             }
-            if (url === '/products-ui-config.json') {
+            if (url === `${baseUrl}products-ui-config.json`) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve([...mockUiConfig]),
@@ -190,34 +191,36 @@ describe('Application Logic', () => {
             await mainModule.initializeApp();
 
             const productContainer = document.getElementById('product-list-container');
-            expect(fetch).toHaveBeenCalledWith('/setup.json');
-            expect(fetch).toHaveBeenCalledWith('/products.json');
-            expect(fetch).toHaveBeenCalledWith('/products-config.json');
-            expect(fetch).toHaveBeenCalledWith('/products-ui-config.json');
+            const baseUrl = '/facet-filter-page/';
+            expect(fetch).toHaveBeenCalledWith(`${baseUrl}setup.json`);
+            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products.json`);
+            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products-config.json`);
+            expect(fetch).toHaveBeenCalledWith(`${baseUrl}products-ui-config.json`);
             expect(productContainer?.querySelectorAll('.card').length).toBe(2);
             expect(productContainer?.innerHTML).toContain('Product 1');
             expect(productContainer?.innerHTML).toContain('Product 2');
         });
 
         it('should handle fetch error gracefully if products.json fails', async () => {
+            const baseUrl = '/facet-filter-page/';
             // Mock a failure for only the products.json fetch
             (fetch as Mock).mockImplementation((url: string) => {
-                if (url === '/setup.json') {
+                if (url === `${baseUrl}setup.json`) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve({ dataset: 'products' }),
                     });
                 }
-                if (url === '/products.json') {
+                if (url === `${baseUrl}products.json`) {
                     return Promise.resolve({ ok: false, status: 404 });
                 }
-                if (url === '/products-config.json') {
+                if (url === `${baseUrl}products-config.json`) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve(mockTemplateConfig),
                     });
                 }
-                if (url === '/products-ui-config.json') {
+                if (url === `${baseUrl}products-ui-config.json`) {
                     return Promise.resolve({
                         ok: true,
                         json: () => Promise.resolve(mockUiConfig),
