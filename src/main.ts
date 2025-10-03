@@ -8,17 +8,13 @@ import type { API as NoUiSliderAPI } from 'nouislider';
 import 'nouislider/dist/nouislider.css';
 
 // --- Type Definitions ---
-export interface Product {
-  id: number;
-  name: string;
-  color: string;
-  material: string;
-  price: number;
-  weight_kg: number;
+export interface Product extends Record<string, any> {
+  // While we allow any property, we can still suggest known ones for better DX
+  // when we know the dataset, but for now, a generic record is best.
 }
 
 export interface UIProperty {
-  id: keyof Product;
+  id: string; // Changed from keyof Product to be generic
   title: string;
   type: 'categorical' | 'continuous';
 }
@@ -42,7 +38,7 @@ let uiConfig: UIGroup[] = [];
 // --- NEW INTERFACES & CONFIG ---
 export interface TemplateMapping {
   field: string;
-  property: keyof Product;
+  property: string; // Changed from keyof Product
   prefix?: string;
   suffix?: string;
   format?: (value: any) => string;
@@ -53,12 +49,10 @@ export interface TemplateMapping {
 /**
  * Initializes a dual-thumb noUiSlider and links its events to applyFilters.
  */
-function initializeNoUiSlider(propId: keyof Product, minVal: number, maxVal: number, parentElement: HTMLElement): void {
+function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, parentElement: HTMLElement): void {
   const sliderDiv = document.createElement('div');
   sliderDiv.id = `slider-${propId}`;
   parentElement.appendChild(sliderDiv);
-
-  currentFilters[propId] = [minVal, maxVal];
 
   noUiSlider.create(sliderDiv, {
     start: [minVal, maxVal],
@@ -115,7 +109,7 @@ function generatePropertyFilter(property: UIProperty, parentElement: HTMLElement
 
 // --- FILTERING & RENDERING LOGIC ---
 
-function updateCategoricalFilters(propId: keyof Product, value: string, isChecked: boolean): void {
+function updateCategoricalFilters(propId: string, value: string, isChecked: boolean): void {
   let current = currentFilters[propId] as CategoricalFilter | undefined;
   if (!current) {
     current = [];
@@ -156,7 +150,7 @@ function applyFilters(): void {
   if (Object.keys(continuousFilters).length > 0) {
     results.data.items = results.data.items.filter(item => {
       return Object.entries(continuousFilters).every(([key, range]) => {
-        const value = item[key as keyof Product] as number;
+        const value = item[key] as number;
         return value >= range[0] && value <= range[1];
       });
     });
@@ -192,11 +186,11 @@ function applyFilters(): void {
 
   // --- Render recalculated facets ---
   Object.keys(finalFacets).forEach(propId => {
-    renderFacets(finalFacets[propId].buckets, propId as keyof Product);
+    renderFacets(finalFacets[propId].buckets, propId);
   });
 }
 
-function renderFacets(buckets: any[], propId: keyof Product): void {
+function renderFacets(buckets: any[], propId: string): void {
   const container = document.getElementById(`facet-container-${propId}`);
   if (!container) return;
 
@@ -263,22 +257,37 @@ async function initializeApp(): Promise<void> {
   if (!filterGroupsContainer || !productContainer) return;
 
   try {
+    // --- 1. Fetch Setup Configuration ---
+    const setupResponse = await fetch('/setup.json');
+    if (!setupResponse.ok) {
+      throw new Error(`HTTP error! status: ${setupResponse.status}. Failed to load setup.json.`);
+    }
+    const setupConfig = await setupResponse.json();
+    const dataset = setupConfig.dataset;
+
+    if (!dataset) {
+      throw new Error("`dataset` key not found in setup.json.");
+    }
+
+    // --- 2. Fetch Dataset-specific Files ---
     const [productsResponse, templateResponse, uiConfigResponse] = await Promise.all([
-      fetch('/products.json'),
-      fetch('/products-config.json'),
-      fetch('/ui-config.json'),
+      fetch(`/${dataset}.json`),
+      fetch(`/${dataset}-config.json`),
+      fetch(`/${dataset}-ui-config.json`),
     ]);
 
+    // --- 3. Validate Responses ---
     if (!productsResponse.ok) {
-      throw new Error(`HTTP error! status: ${productsResponse.status}. Failed to load products.json. Did you run 'npm run data-build'?`);
+      throw new Error(`HTTP error! status: ${productsResponse.status}. Failed to load ${dataset}.json. Did you run the data generation script?`);
     }
     if (!templateResponse.ok) {
-      throw new Error(`HTTP error! status: ${templateResponse.status}. Failed to load template-config.json.`);
+      throw new Error(`HTTP error! status: ${templateResponse.status}. Failed to load ${dataset}-config.json.`);
     }
     if (!uiConfigResponse.ok) {
-      throw new Error(`HTTP error! status: ${uiConfigResponse.status}. Failed to load ui-config.json.`);
+      throw new Error(`HTTP error! status: ${uiConfigResponse.status}. Failed to load ${dataset}-ui-config.json.`);
     }
 
+    // --- 4. Process Data ---
     productData = await productsResponse.json();
     uiConfig = await uiConfigResponse.json();
     const rawTemplateConfig = await templateResponse.json();
@@ -307,7 +316,7 @@ async function initializeApp(): Promise<void> {
   }
 
   const itemsjsConfiguration = {
-    searchableFields: ['name', 'color', 'material'],
+    searchableFields: Object.keys(productData[0] || {}),
     aggregations: uiConfig.flatMap(group => group.properties)
       .reduce((acc, p) => {
         acc[p.id] = { title: p.title, size: 100, type: 'terms' };
