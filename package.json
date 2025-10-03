@@ -11,7 +11,10 @@
     "test": "vitest"
   },
   "devDependencies": {
+    "@types/node": "^24.6.2",
+    "@types/nouislider": "^9.0.10",
     "jsdom": "^27.0.0",
+    "typescript": "^5.9.3",
     "vite": "^7.1.9",
     "vitest": "^3.2.4"
   },

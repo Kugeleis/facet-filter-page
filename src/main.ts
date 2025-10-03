@@ -1,12 +1,39 @@
-// src/main.js
+// src/main.ts
 
-// --- Imports (Vite handles these from node_modules and src/) ---
+// --- Imports ---
 import itemsjs from 'itemsjs';
+import type { ItemsJs } from 'itemsjs';
 import noUiSlider from 'nouislider';
-import 'nouislider/dist/nouislider.css'; // Import slider CSS
+import type { API as NoUiSliderAPI } from 'nouislider';
+import 'nouislider/dist/nouislider.css';
+
+// --- Type Definitions ---
+export interface Product {
+  id: number;
+  name: string;
+  color: string;
+  material: string;
+  price: number;
+  weight_kg: number;
+}
+
+export interface UIProperty {
+  id: keyof Product;
+  title: string;
+  type: 'categorical' | 'continuous';
+}
+
+export interface UIGroup {
+  groupName: string;
+  properties: UIProperty[];
+}
+
+type CategoricalFilter = string[];
+type ContinuousFilter = [number, number];
+export type Filters = Record<string, CategoricalFilter | ContinuousFilter>;
 
 // --- CONFIGURATION ---
-const uiConfig = [
+const uiConfig: UIGroup[] = [
   {
     groupName: "Vehicle Details",
     properties: [
@@ -24,21 +51,20 @@ const uiConfig = [
 ];
 
 // --- STATE AND INSTANCES ---
-let itemsjsInstance;
-let currentFilters = {};
-let productData = [];
+let itemsjsInstance: ItemsJs<Product>;
+let currentFilters: Filters = {};
+let productData: Product[] = [];
 
 // --- UI GENERATION & INTEGRATION ---
 
 /**
  * Initializes a dual-thumb noUiSlider and links its events to applyFilters.
  */
-function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
+function initializeNoUiSlider(propId: keyof Product, minVal: number, maxVal: number, parentElement: HTMLElement): void {
   const sliderDiv = document.createElement('div');
   sliderDiv.id = `slider-${propId}`;
   parentElement.appendChild(sliderDiv);
 
-  // Initialize state to full range, using an array format [min, max]
   currentFilters[propId] = [minVal, maxVal];
 
   noUiSlider.create(sliderDiv, {
@@ -47,12 +73,14 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
     range: { 'min': minVal, 'max': maxVal },
     step: propId === 'price' ? 100 : 1,
     tooltips: true,
-    format: { to: (value) => value.toFixed(propId === 'price' ? 0 : 1), from: (value) => Number(value) }
+    format: {
+      to: (value: number): string => value.toFixed(propId === 'price' ? 0 : 1),
+      from: (value: string): number => Number(value)
+    }
   });
 
-  sliderDiv.noUiSlider.on('change', (values, handle) => {
-    // Update the currentFilters object with the new range as an array
-    currentFilters[propId] = [parseFloat(values[0]), parseFloat(values[1])];
+  (sliderDiv as any).noUiSlider.on('change', (values: (string | number)[]) => {
+    currentFilters[propId] = [parseFloat(values[0] as string), parseFloat(values[1] as string)];
     applyFilters();
   });
 }
@@ -60,11 +88,9 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
 /**
  * Dynamically generates the filter UI based on config.
  */
-function generatePropertyFilter(property, parentElement) {
+function generatePropertyFilter(property: UIProperty, parentElement: HTMLElement): void {
   const propId = property.id;
   const listItem = document.createElement('li');
-
-  // The title is now a clickable link
   const titleLink = document.createElement('a');
   titleLink.textContent = property.title;
   listItem.appendChild(titleLink);
@@ -74,18 +100,17 @@ function generatePropertyFilter(property, parentElement) {
     facetContainer.id = `facet-container-${propId}`;
     listItem.appendChild(facetContainer);
 
-    // Event delegation for checkboxes
-    facetContainer.addEventListener('change', (e) => {
-      if (e.target.type === 'checkbox') {
-        updateCategoricalFilters(propId, e.target.value, e.target.checked);
+    facetContainer.addEventListener('change', (e: Event) => {
+      const target = e.target as HTMLInputElement;
+      if (target.type === 'checkbox') {
+        updateCategoricalFilters(propId, target.value, target.checked);
       }
     });
 
   } else if (property.type === "continuous") {
     const sliderWrapper = document.createElement('div');
-    // Add some padding inside the li for the slider
     sliderWrapper.style.padding = '0.75em';
-    const values = productData.map(item => item[propId]).filter(v => typeof v === 'number');
+    const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
     const minVal = Math.floor(Math.min(...values));
     const maxVal = Math.ceil(Math.max(...values));
     initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
@@ -97,44 +122,48 @@ function generatePropertyFilter(property, parentElement) {
 
 // --- FILTERING & RENDERING LOGIC ---
 
-function updateCategoricalFilters(propId, value, isChecked) {
-  if (!currentFilters[propId]) currentFilters[propId] = [];
-
-  if (isChecked) {
-    currentFilters[propId].push(value);
-  } else {
-    currentFilters[propId] = currentFilters[propId].filter(v => v !== value);
+function updateCategoricalFilters(propId: keyof Product, value: string, isChecked: boolean): void {
+  let current = currentFilters[propId] as CategoricalFilter | undefined;
+  if (!current) {
+    current = [];
   }
 
-  if (currentFilters[propId].length === 0) delete currentFilters[propId];
+  if (isChecked) {
+    current.push(value);
+  } else {
+    current = current.filter(v => v !== value);
+  }
+
+  if (current.length === 0) {
+    delete currentFilters[propId];
+  } else {
+    currentFilters[propId] = current;
+  }
 
   applyFilters();
 }
 
-function applyFilters() {
-  // Separate categorical and continuous filters
-  const categoricalFilters = {};
-  const continuousFilters = {};
+function applyFilters(): void {
+  const categoricalFilters: Record<string, string[]> = {};
+  const continuousFilters: Record<string, [number, number]> = {};
 
   for (const key in currentFilters) {
     const isContinuous = uiConfig.some(group => group.properties.some(p => p.id === key && p.type === 'continuous'));
     if (isContinuous) {
-      continuousFilters[key] = currentFilters[key];
+      continuousFilters[key] = currentFilters[key] as [number, number];
     } else {
-      categoricalFilters[key] = currentFilters[key];
+      categoricalFilters[key] = currentFilters[key] as string[];
     }
   }
 
-  // 1. Run search with only categorical filters
   let results = itemsjsInstance.search({
     filters: categoricalFilters,
   });
 
-  // 2. Manually apply continuous filters to the results
   if (Object.keys(continuousFilters).length > 0) {
     results.data.items = results.data.items.filter(item => {
       return Object.entries(continuousFilters).every(([key, range]) => {
-        const value = item[key];
+        const value = item[key as keyof Product] as number;
         return value >= range[0] && value <= range[1];
       });
     });
@@ -142,31 +171,28 @@ function applyFilters() {
 
   console.log("Filtered items:", results.data.items);
 
-  // Manually retrieve the full list of facets for rendering,
-  // as search results only contain facets for the *filtered* set.
-  const facets = {
-    color: itemsjsInstance.aggregation({ name: 'color', per_page: 100 }),
-    material: itemsjsInstance.aggregation({ name: 'material', per_page: 100 })
-  };
+  const facets = results.data.aggregations;
   console.log("Facets data:", JSON.stringify(facets, null, 2));
 
-  // 2. Render results
   renderProductCards(results.data.items);
-  renderFacets(facets);
+
+  if (facets && facets['color']) {
+    renderFacets(facets['color'].buckets, 'color');
+  }
+  if (facets && facets['material']) {
+    renderFacets(facets['material'].buckets, 'material');
+  }
 }
 
-function renderFacets(facets) {
-  // Renders the categorical checkboxes and updates counts
-  for (const propId in facets) {
-    const container = document.getElementById(`facet-container-${propId}`);
-    if (!container || !facets[propId] || !facets[propId].data) continue;
+function renderFacets(buckets: any[], propId: keyof Product): void {
+  const container = document.getElementById(`facet-container-${propId}`);
+  if (!container) return;
 
-    let html = '';
-    // The aggregation data is nested under `data.buckets`
-    facets[propId].data.buckets.forEach(facetValue => {
-      const isChecked = currentFilters[propId] && currentFilters[propId].includes(facetValue.key);
-
-      // Use Bulma classes for styling
+  let html = '';
+  buckets.forEach(facetValue => {
+    // Only render the facet if it has a count greater than 0
+    if (facetValue.doc_count > 0) {
+      const isChecked = currentFilters[propId] && (currentFilters[propId] as CategoricalFilter).includes(facetValue.key);
       html += `
         <li>
           <label class="checkbox">
@@ -178,14 +204,16 @@ function renderFacets(facets) {
           </label>
         </li>
       `;
-    });
-    container.innerHTML = html;
-  }
+    }
+  });
+  container.innerHTML = html;
 }
 
-function renderProductCards(products) {
+function renderProductCards(products: Product[]): void {
   const container = document.getElementById('product-list-container');
-  const template = document.getElementById('product-card-template');
+  const template = document.getElementById('product-card-template') as HTMLTemplateElement;
+  if (!container || !template) return;
+
   container.innerHTML = '';
 
   if (products.length === 0) {
@@ -194,12 +222,12 @@ function renderProductCards(products) {
   }
 
   products.forEach(product => {
-    const cardClone = template.content.cloneNode(true);
-    cardClone.querySelector('[data-template-field="name"]').textContent = product.name;
-    cardClone.querySelector('[data-template-field="color"]').textContent = product.color;
-    cardClone.querySelector('[data-template-field="material"]').textContent = product.material;
-    cardClone.querySelector('[data-template-field="weight"]').textContent = product.weight_kg;
-    cardClone.querySelector('[data-template-field="price"]').textContent = `$${product.price.toFixed(2)}`;
+    const cardClone = template.content.cloneNode(true) as DocumentFragment;
+    (cardClone.querySelector('[data-template-field="name"]') as HTMLElement).textContent = product.name;
+    (cardClone.querySelector('[data-template-field="color"]') as HTMLElement).textContent = product.color;
+    (cardClone.querySelector('[data-template-field="material"]') as HTMLElement).textContent = product.material;
+    (cardClone.querySelector('[data-template-field="weight"]') as HTMLElement).textContent = product.weight_kg.toString();
+    (cardClone.querySelector('[data-template-field="price"]') as HTMLElement).textContent = `$${product.price.toFixed(2)}`;
     container.appendChild(cardClone);
   });
 }
@@ -207,66 +235,58 @@ function renderProductCards(products) {
 /**
  * Initializes the entire application asynchronously.
  */
-async function initializeApp() {
+async function initializeApp(): Promise<void> {
   const filterGroupsContainer = document.getElementById('filter-groups-container');
   const productContainer = document.getElementById('product-list-container');
+  if (!filterGroupsContainer || !productContainer) return;
 
-  // 1. Load data asynchronously (Vite ensures data is served)
   try {
     const response = await fetch('/products.json');
     if (!response.ok) {
-      // Throw a more specific error to be caught below
       throw new Error(`HTTP error! status: ${response.status}. Failed to load products.json. Did you run 'npm run data-build'?`);
     }
     productData = await response.json();
     console.log("Unfiltered (all) items:", productData);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Fatal Error:", error.message);
-    // Display a user-friendly error message in the main container
     productContainer.innerHTML = `<div role="alert">
       <strong>Application Error!</strong>
       <span>${error.message}</span>
     </div>`;
-    // Stop execution if data fails to load, as the app is unusable.
     return;
   }
 
-  // 2. Configure ItemsJS
   const itemsjsConfiguration = {
     searchableFields: ['name', 'color', 'material'],
-    // Ensure all properties, including continuous ones, are included in aggregations
     aggregations: uiConfig.flatMap(group => group.properties)
       .reduce((acc, p) => {
-        acc[p.id] = { title: p.title, size: 100 };
+        acc[p.id] = { title: p.title, size: 100, type: 'terms' };
         return acc;
-      }, {}),
+      }, {} as any),
   };
   itemsjsInstance = itemsjs(productData, itemsjsConfiguration);
 
-  // 3. Generate the dynamic filters with the correct structure
   uiConfig.forEach(group => {
-    // Create the menu label for the group
     const groupLabel = document.createElement('p');
     groupLabel.className = 'menu-label';
     groupLabel.textContent = group.groupName;
     filterGroupsContainer.appendChild(groupLabel);
 
-    // Create the menu list for the group's properties
     const menuList = document.createElement('ul');
     menuList.className = 'menu-list';
     filterGroupsContainer.appendChild(menuList);
 
-    // Generate each property filter and append it to the new menu list
     group.properties.forEach(property => {
       generatePropertyFilter(property, menuList);
     });
   });
 
-  // 4. Initial filter and render
   applyFilters();
 }
 
-document.addEventListener('DOMContentLoaded', initializeApp);
+document.addEventListener('DOMContentLoaded', () => {
+  initializeApp();
+});
 
 // Export for testing
 export {
