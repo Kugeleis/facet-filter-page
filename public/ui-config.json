@@ -1,0 +1,16 @@
+[
+  {
+    "groupName": "Vehicle Details",
+    "properties": [
+      { "id": "color", "title": "Color", "type": "categorical" },
+      { "id": "material", "title": "Material", "type": "categorical" }
+    ]
+  },
+  {
+    "groupName": "Performance & Cost",
+    "properties": [
+      { "id": "weight_kg", "title": "Weight (kg)", "type": "continuous" },
+      { "id": "price", "title": "Price ($)", "type": "continuous" }
+    ]
+  }
+]
