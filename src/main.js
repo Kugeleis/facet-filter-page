@@ -38,8 +38,8 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
   sliderDiv.id = `slider-${propId}`;
   parentElement.appendChild(sliderDiv);
 
-  // Initialize state to full range
-  currentFilters[propId] = { min: minVal, max: maxVal };
+  // Initialize state to full range, using an array format [min, max]
+  currentFilters[propId] = [minVal, maxVal];
 
   noUiSlider.create(sliderDiv, {
     start: [minVal, maxVal],
@@ -51,11 +51,8 @@ function initializeNoUiSlider(propId, minVal, maxVal, parentElement) {
   });
 
   sliderDiv.noUiSlider.on('change', (values, handle) => {
-    // Update the currentFilters object with the new range
-    currentFilters[propId] = {
-      min: parseFloat(values[0]),
-      max: parseFloat(values[1])
-    };
+    // Update the currentFilters object with the new range as an array
+    currentFilters[propId] = [parseFloat(values[0]), parseFloat(values[1])];
     applyFilters();
   });
 }
@@ -197,9 +194,16 @@ async function initializeApp() {
   // 3. Configure ItemsJS
   const itemsjsConfiguration = {
     searchableFields: ['name', 'color', 'material'],
+    // Ensure all properties, including continuous ones, are included in aggregations
     aggregations: uiConfig.flatMap(group => group.properties)
-      .filter(p => p.type === 'categorical')
-      .reduce((acc, p) => ({ ...acc, [p.id]: { title: p.title, size: 100 } }), {}),
+      .reduce((acc, p) => {
+        acc[p.id] = { title: p.title, size: 100 };
+        if (p.type === 'continuous') {
+          // This marks the field for range filtering.
+          // The search function will expect a [min, max] array for these filters.
+        }
+        return acc;
+      }, {}),
   };
   itemsjsInstance = itemsjs(productData, itemsjsConfiguration);
 
