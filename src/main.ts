@@ -16,7 +16,7 @@ export interface Product extends Record<string, any> {
 export interface UIProperty {
   id: string; // Changed from keyof Product to be generic
   title: string;
-  type: 'categorical' | 'continuous';
+  type: 'categorical' | 'continuous' | 'stepped-continuous-single';
 }
 
 export interface UIGroup {
@@ -51,6 +51,39 @@ export interface TemplateMapping {
 /**
  * Initializes a dual-thumb noUiSlider and links its events to applyFilters.
  */
+function cleanData(data: Product[]): Product[] {
+    const internetKeywords = ["WAN", "DSL", "Fiber", "Cable", "LTE", "5G"];
+
+    return data.map(p => {
+        const product = { ...p };
+        let version: number | null = null;
+        let internet: string | null = null;
+
+        const candidates = [
+            product.Aktuelle_Firmware_Version,
+            product.Internet,
+            product.Datum_letztes_Firmware_Update,
+            ...(Array.isArray(product.null) ? product.null : [])
+        ];
+
+        for (const candidate of candidates) {
+            if (typeof candidate === 'number' || (typeof candidate === 'string' && !isNaN(parseFloat(candidate)))) {
+                const num = parseFloat(candidate as string);
+                if (num > 0 && num < 100) { // Assuming firmware versions are between 0 and 100
+                    version = version ?? num;
+                }
+            } else if (typeof candidate === 'string' && internetKeywords.some(kw => candidate.includes(kw))) {
+                internet = internet ?? candidate;
+            }
+        }
+
+        product.Aktuelle_Firmware_Version = version;
+        product.Internet = internet || 'none';
+
+        return product;
+    });
+}
+
 function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, parentElement: HTMLElement): void {
   const sliderDiv = document.createElement('div');
   sliderDiv.id = `slider-${propId}`;
@@ -70,6 +103,61 @@ function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, pa
 
   slider.on('change', (values: (string | number)[]) => {
     currentFilters[propId] = [parseFloat(values[0] as string), parseFloat(values[1] as string)];
+    applyFilters();
+  });
+
+  sliderInstances[propId] = slider; // Store the instance
+}
+
+/**
+ * Initializes a single-thumb, stepped noUiSlider for firmware versions.
+ */
+function initializeSteppedSlider(propId: string, parentElement: HTMLElement): void {
+  // 1. Extract, clean, and sort unique firmware versions
+  const uniqueVersions = [...new Set(productData.map(item => item[propId]).filter(v => typeof v === 'number' && v !== null))] as number[];
+  uniqueVersions.sort((a, b) => a - b);
+
+  if (uniqueVersions.length < 2) {
+    console.warn(`Not enough data points to create a stepped slider for ${propId}.`);
+    return;
+  }
+
+  const sliderDiv = document.createElement('div');
+  sliderDiv.id = `slider-${propId}`;
+  parentElement.appendChild(sliderDiv);
+
+  // 2. Create a mapping from index to version number for the slider's range
+  const rangeMapping: { [key: string]: number } = {};
+  uniqueVersions.forEach((version, index) => {
+    // For the first and last items, use 'min' and 'max'
+    if (index === 0) {
+      rangeMapping['min'] = version;
+    } else if (index === uniqueVersions.length - 1) {
+      rangeMapping['max'] = version;
+    } else {
+      // For intermediate points, use percentage-based keys
+      const percentage = (index / (uniqueVersions.length - 1)) * 100;
+      rangeMapping[`${percentage.toFixed(2)}%`] = version;
+    }
+  });
+
+
+  const slider = noUiSlider.create(sliderDiv, {
+    start: [uniqueVersions[0]], // Start at the lowest version
+    range: rangeMapping,
+    snap: true, // Snap to the defined steps in the range
+    step: 1, // This is nominal; 'snap' is what enforces the steps
+    tooltips: true,
+    format: {
+      to: (value: number): string => value.toFixed(2), // Display version with 2 decimal places
+      from: (value: string): number => Number(value)
+    }
+  });
+
+  slider.on('change', (values: (string | number)[]) => {
+    // For a single-handle slider, we get one value.
+    // We store it as the lower bound of a range, with Infinity as the upper bound.
+    currentFilters[propId] = [parseFloat(values[0] as string), Infinity];
     applyFilters();
   });
 
@@ -105,6 +193,11 @@ function generatePropertyFilter(property: UIProperty, parentElement: HTMLElement
     const minVal = Math.floor(Math.min(...values));
     const maxVal = Math.ceil(Math.max(...values));
     initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
+    listItem.appendChild(sliderWrapper);
+  } else if (property.type === "stepped-continuous-single") {
+    const sliderWrapper = document.createElement('div');
+    sliderWrapper.style.padding = '0.75em';
+    initializeSteppedSlider(propId, sliderWrapper);
     listItem.appendChild(sliderWrapper);
   }
 
@@ -150,9 +243,10 @@ function applyFilters(): void {
   const categoricalFilters: Record<string, string[]> = {};
   const continuousFilters: Record<string, [number, number]> = {};
 
+  // Separate filters into categorical and continuous based on UI config
   for (const key in currentFilters) {
-    const isContinuous = uiConfig.some(group => group.properties.some(p => p.id === key && p.type === 'continuous'));
-    if (isContinuous) {
+    const property = uiConfig.flatMap(g => g.properties).find(p => p.id === key);
+    if (property && (property.type === 'continuous' || property.type === 'stepped-continuous-single')) {
       continuousFilters[key] = currentFilters[key] as [number, number];
     } else {
       categoricalFilters[key] = currentFilters[key] as string[];
@@ -348,7 +442,11 @@ async function initializeApp(): Promise<void> {
     }
 
     // --- 4. Process Data ---
-    productData = await productsResponse.json();
+    const rawProductData = await productsResponse.json();
+
+    // Data Cleansing Step: Corrects inconsistencies where firmware versions and internet types are swapped.
+    productData = cleanData(rawProductData);
+
     uiConfig = await uiConfigResponse.json();
     const rawTemplateConfig = await templateResponse.json();
 
@@ -413,6 +511,7 @@ export {
   applyFilters,
   updateCategoricalFilters,
   initializeNoUiSlider,
+  initializeSteppedSlider,
   productData,
   itemsjsInstance,
   currentFilters,
