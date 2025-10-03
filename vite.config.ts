@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'url';
 
 export default defineConfig({
+  base: '/facet-filter-page/',
   plugins: [],
   resolve: {
     alias: {
