@@ -343,6 +343,18 @@ function applyFilters(): void {
 
   renderProductCards(results.data.items, cardTemplateMapping);
 
+  const countContainer = document.getElementById('product-count-container');
+  if (countContainer) {
+    const total = productData.length;
+    const matched = results.data.items.length;
+    countContainer.innerHTML = `
+      <p class="is-size-5">
+        Showing <span class="has-text-weight-bold has-text-primary">${matched}</span>
+        of <span class="has-text-weight-bold">${total}</span> products
+      </p>
+    `;
+  }
+
   // --- Render facets using the aggregations from the full dataset ---
   if (allAggregations) {
     Object.keys(allAggregations).forEach(propId => {
@@ -372,13 +384,45 @@ function renderFacets(buckets: any[], propId: string): void {
                    value="${facetValue.key}"
                    ${isChecked ? 'checked' : ''}>
             ${facetValue.key}
-            <span class="tag is-light is-rounded ml-2">${facetValue.doc_count}</span>
+            <span class="tag is-outlined is-rounded ml-2">${facetValue.doc_count}</span>
           </label>
         </li>
       `;
     }
   });
   container.innerHTML = html;
+}
+
+function showProductModal(product: Product): void {
+  const modal = document.getElementById('product-modal');
+  const modalContent = document.getElementById('product-modal-content');
+  const modalTitle = modal?.querySelector('.modal-card-title');
+
+  if (!modal || !modalContent || !modalTitle) return;
+
+  const productName = product.name || product.title || 'Product Details';
+  modalTitle.textContent = productName;
+
+  let contentHtml = '<div class="content"><ul>';
+  for (const key in product) {
+    const formattedKey = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const value = product[key];
+
+    if (value !== null && value !== undefined && value !== '') {
+        contentHtml += `<li><strong>${formattedKey}:</strong> ${value}</li>`;
+    }
+  }
+  contentHtml += '</ul></div>';
+
+  modalContent.innerHTML = contentHtml;
+  modal.classList.add('is-active');
+}
+
+function hideProductModal(): void {
+  const modal = document.getElementById('product-modal');
+  if (modal) {
+    modal.classList.remove('is-active');
+  }
 }
 
 function renderProductCards(products: Product[], templateMapping: TemplateMapping[]): void {
@@ -395,6 +439,7 @@ function renderProductCards(products: Product[], templateMapping: TemplateMappin
 
   products.forEach(product => {
     const cardClone = template.content.cloneNode(true) as DocumentFragment;
+    const cardElement = cardClone.querySelector('.card');
 
     templateMapping.forEach(mapping => {
       const element = cardClone.querySelector(`[data-template-field="${mapping.field}"]`) as HTMLElement;
@@ -409,6 +454,12 @@ function renderProductCards(products: Product[], templateMapping: TemplateMappin
         element.textContent = `${mapping.prefix || ''}${displayValue}${mapping.suffix || ''}`;
       }
     });
+
+    if (cardElement) {
+      cardElement.addEventListener('click', () => {
+        showProductModal(product);
+      });
+    }
 
     container.appendChild(cardClone);
   });
@@ -430,12 +481,18 @@ async function initializeApp(): Promise<void> {
     appVersionElement.textContent = __APP_VERSION__;
   }
 
-  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement || !resetButton) {
+  const modal = document.getElementById('product-modal');
+  const modalBackground = modal?.querySelector('.modal-background');
+  const modalCloseButton = modal?.querySelector('.delete');
+
+  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement || !resetButton || !modal || !modalBackground || !modalCloseButton) {
     console.error("A required element was not found in the DOM.");
     return;
   }
 
   resetButton.addEventListener('click', resetFilters);
+  modalBackground.addEventListener('click', hideProductModal);
+  modalCloseButton.addEventListener('click', hideProductModal);
 
   try {
     // --- 1. Fetch Setup Configuration ---
