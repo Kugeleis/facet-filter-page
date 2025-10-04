@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'url';
+import { vitePluginMdToHTML } from 'vite-plugin-md-to-html';
 
 export default defineConfig({
   base: '/facet-filter-page/',
   define: {
     '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
   },
-  plugins: [],
+  plugins: [vitePluginMdToHTML()],
   resolve: {
     alias: {
       // Set up the '@' alias to point to the 'src' directory
