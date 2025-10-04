@@ -23,10 +23,24 @@ tasks:
   # 2. DATA MANAGEMENT (Daily Update)
   # ----------------------------------------------------
   data:
-    desc: Regenerate the src/products.json file from the source CSV.
+    desc: "Regenerate JSON data. Processes all datasets by default. Pass specific datasets with '--'. E.g., 'task data -- products'"
     cmds:
-      - echo "--- Regenerating Static JSON Data ---"
-      - "{{.PY_SCRIPT}}"
+      - |
+        set -e
+        if [ -z "{{.CLI_ARGS}}" ]; then
+          echo "--- Regenerating all datasets ---"
+          for csv_file in $(find scripts -maxdepth 1 -name "*.csv" ! -name "*-config.csv" ! -name "*-ui-config.csv"); do
+            dataset=$(basename "$csv_file" .csv)
+            echo "Processing '$dataset'..."
+            {{.PY_SCRIPT}} "$dataset"
+          done
+        else
+          echo "--- Regenerating specified datasets: {{.CLI_ARGS}} ---"
+          for dataset in {{.CLI_ARGS}}; do
+            echo "Processing '$dataset'..."
+            {{.PY_SCRIPT}} "$dataset"
+          done
+        fi
 
   check-deps:
     desc: Checks if node_modules exists and installs dependencies if missing.

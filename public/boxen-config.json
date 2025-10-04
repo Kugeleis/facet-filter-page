@@ -9,14 +9,14 @@
     {
         "field": "color",
         "property": "WLAN_Standard",
-        "prefix": "WiFi Standard: ",
+        "prefix": "WiFi Standard:",
         "suffix": null,
         "format": null
     },
     {
         "field": "material",
         "property": "Internet",
-        "prefix": "Internet Type: ",
+        "prefix": "Internet Type:",
         "suffix": null,
         "format": null
     },
