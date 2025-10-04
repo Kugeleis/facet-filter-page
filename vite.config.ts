@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath, URL } from 'url';
 import { vitePluginMdToHTML } from 'vite-plugin-md-to-html';
+import { resolve } from 'path';
+
 
 export default defineConfig({
   base: '/facet-filter-page/',
@@ -8,6 +10,16 @@ export default defineConfig({
     '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
   },
   plugins: [vitePluginMdToHTML()],
+
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(fileURLToPath(new URL('.', import.meta.url)), 'index.html'),
+        about: resolve(fileURLToPath(new URL('.', import.meta.url)), 'about.html'),
+      },
+    },
+  },
+
   resolve: {
     alias: {
       // Set up the '@' alias to point to the 'src' directory
