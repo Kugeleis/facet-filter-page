@@ -25,30 +25,7 @@ const mockUiConfig = [
     }
 ];
 
-// Mock itemsjs
-const mockSearch = vi.fn((query?: { filters?: any; per_page?: number }) => {
-    const filters = query?.filters || {};
-    let filteredItems = mockProductData.filter(product => {
-        if (filters.color && !filters.color.includes(product.color)) {
-            return false;
-        }
-        return true;
-    });
-    return {
-      data: {
-        items: filteredItems,
-        aggregations: {
-            color: { buckets: [{ key: 'Red', doc_count: 1 }, { key: 'Blue', doc_count: 1 }] }
-        }
-      }
-    };
-});
-
-vi.mock('itemsjs', () => ({
-  default: vi.fn(() => ({
-    search: mockSearch,
-  }))
-}));
+// No longer mocking itemsjs to allow for better integration testing.
 
 // Mock fetch
 (global as any).fetch = vi.fn();
@@ -77,6 +54,7 @@ describe('Core Application Logic', () => {
             <div id="filter-groups-container"></div>
             <div id="product-list-container"></div>
             <div id="product-count-container"></div>
+            <input id="search-input" type="text">
             <button id="reset-filters-button"></button>
             <div id="product-modal">
                 <div class="modal-background"></div>
@@ -129,8 +107,8 @@ describe('Core Application Logic', () => {
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('setup.json'));
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('products.json'));
 
-            // Check if itemsjs was called correctly
-            expect(mockSearch).toHaveBeenCalledWith({ per_page: mockProductData.length, filters: {} });
+            // The test now relies on a real itemsjs instance.
+            // We verify the outcome by checking the rendered DOM.
 
             // Check if products are rendered
             const productContainer = document.getElementById('product-list-container');
@@ -147,16 +125,8 @@ describe('Core Application Logic', () => {
         it('should filter by a category and update the UI', async () => {
             await appModule.initializeApp(); // Initial load
 
-            // Clear mocks from initial load to focus on the filtering action
-            mockSearch.mockClear();
-
             // Apply a filter
             appModule.updateCategoricalFilters('color', 'Red', true);
-
-            // Check that itemsjs was called with the correct filter
-            expect(mockSearch).toHaveBeenCalledWith(expect.objectContaining({
-                filters: { color: ['Red'] }
-            }));
 
             // Check that the product list is updated
             const productContainer = document.getElementById('product-list-container');
@@ -174,16 +144,8 @@ describe('Core Application Logic', () => {
             appModule.updateCategoricalFilters('color', 'Red', true);
             expect(document.querySelectorAll('#product-list-container .card').length).toBe(1);
 
-            // Clear mocks to focus on the reset action
-            mockSearch.mockClear();
-
             // Reset filters
             appModule.resetFilters();
-
-            // Check that itemsjs was called with empty filters
-            expect(mockSearch).toHaveBeenCalledWith(expect.objectContaining({
-                filters: {}
-            }));
 
             // Check that the product list is reset
             expect(document.querySelectorAll('#product-list-container .card').length).toBe(2);
@@ -193,6 +155,23 @@ describe('Core Application Logic', () => {
             sliderMocks.forEach(mock => {
                 expect(mock.value.reset).toHaveBeenCalled();
             });
+        });
+    });
+
+    describe('Search', () => {
+        it('should filter by search query and update the UI', async () => {
+            await appModule.initializeApp();
+
+            // Simulate search input
+            const searchInput = document.getElementById('search-input') as HTMLInputElement;
+            searchInput.value = 'Product 1';
+            searchInput.dispatchEvent(new Event('input'));
+
+            // Check that the product list is updated
+            const productContainer = document.getElementById('product-list-container');
+            expect(productContainer?.querySelectorAll('.card').length).toBe(1);
+            expect(productContainer?.textContent).toContain('Product 1');
+            expect(productContainer?.textContent).not.toContain('Product 2');
         });
     });
 });
