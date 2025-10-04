@@ -16,9 +16,12 @@ export interface Product extends Record<string, any> {
 }
 
 export interface UIProperty {
-  id: string; // Changed from keyof Product to be generic
+  id: string;
   title: string;
-  type: 'categorical' | 'continuous' | 'stepped-continuous-single' | 'boolean';
+  type: 'categorical' | 'continuous' | 'stepped-continuous-single' | 'boolean' | 'continuous-single';
+  sliderOptions?: {
+    direction: 'less' | 'greater';
+  };
 }
 
 export interface UIGroup {
@@ -114,59 +117,78 @@ function initializeNoUiSlider(propId: string, minVal: number, maxVal: number, pa
 }
 
 /**
- * Initializes a single-thumb, stepped noUiSlider for firmware versions.
+ * Initializes a single-thumb noUiSlider for continuous or stepped values.
+ * The behavior (less than/greater than) is determined by the property's sliderOptions.
  */
-function initializeSteppedSlider(propId: string, parentElement: HTMLElement): void {
-  // 1. Extract, clean, and sort unique firmware versions
-  const uniqueVersions = [...new Set(productData.map(item => item[propId]).filter(v => typeof v === 'number' && v !== null))] as number[];
-  uniqueVersions.sort((a, b) => a - b);
-
-  if (uniqueVersions.length < 2) {
-    console.warn(`Not enough data points to create a stepped slider for ${propId}.`);
-    return;
-  }
+function initializeSingleHandleSlider(property: UIProperty, parentElement: HTMLElement): void {
+  const propId = property.id;
+  const sliderOptions = property.sliderOptions;
+  const isStepped = property.type === 'stepped-continuous-single';
 
   const sliderDiv = document.createElement('div');
   sliderDiv.id = `slider-${propId}`;
   parentElement.appendChild(sliderDiv);
 
-  // 2. Create a mapping from index to version number for the slider's range
-  const rangeMapping: { [key: string]: number } = {};
-  uniqueVersions.forEach((version, index) => {
-    // For the first and last items, use 'min' and 'max'
-    if (index === 0) {
-      rangeMapping['min'] = version;
-    } else if (index === uniqueVersions.length - 1) {
-      rangeMapping['max'] = version;
-    } else {
-      // For intermediate points, use percentage-based keys
-      const percentage = (index / (uniqueVersions.length - 1)) * 100;
-      rangeMapping[`${percentage.toFixed(2)}%`] = version;
-    }
-  });
+  let sliderConfig: any;
 
+  if (isStepped) {
+    const uniqueValues = [...new Set(productData.map(item => item[propId]).filter(v => typeof v === 'number' && v !== null))] as number[];
+    uniqueValues.sort((a, b) => a - b);
 
-  const slider = noUiSlider.create(sliderDiv, {
-    start: [uniqueVersions[0]], // Start at the lowest version
-    connect: 'lower', // Fill the bar from the left to the handle
-    range: rangeMapping,
-    snap: true, // Snap to the defined steps in the range
-    step: 1, // This is nominal; 'snap' is what enforces the steps
-    tooltips: true,
-    format: {
-      to: (value: number): string => value.toFixed(2), // Display version with 2 decimal places
-      from: (value: string): number => Number(value)
+    if (uniqueValues.length < 2) {
+      console.warn(`Not enough data points to create a stepped slider for ${propId}.`);
+      return;
     }
-  });
+
+    const rangeMapping: { [key: string]: number } = {};
+    uniqueValues.forEach((value, index) => {
+      if (index === 0) rangeMapping['min'] = value;
+      else if (index === uniqueValues.length - 1) rangeMapping['max'] = value;
+      else {
+        const percentage = (index / (uniqueValues.length - 1)) * 100;
+        rangeMapping[`${percentage.toFixed(2)}%`] = value;
+      }
+    });
+
+    sliderConfig = {
+      start: [sliderOptions?.direction === 'less' ? uniqueValues[uniqueValues.length - 1] : uniqueValues[0]],
+      range: rangeMapping,
+      snap: true,
+      step: 1, // Nominal, snap is what matters
+    };
+  } else { // 'continuous-single'
+    const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
+    const minVal = Math.floor(Math.min(...values));
+    const maxVal = Math.ceil(Math.max(...values));
+
+    sliderConfig = {
+      start: [sliderOptions?.direction === 'less' ? maxVal : minVal],
+      range: { 'min': minVal, 'max': maxVal },
+      step: 1,
+    };
+  }
+
+  // Common configuration. For 'greater', fill handle-to-right. For 'less', fill left-to-handle.
+  sliderConfig.connect = sliderOptions?.direction === 'less' ? 'lower' : 'upper';
+  sliderConfig.tooltips = true;
+  sliderConfig.format = {
+    to: (value: number): string => value.toFixed(isStepped ? 2 : 1),
+    from: (value: string): number => Number(value)
+  };
+
+  const slider = noUiSlider.create(sliderDiv, sliderConfig);
 
   slider.on('change', (values: (string | number)[]) => {
-    // For a single-handle slider, we get one value.
-    // We store it as the lower bound of a range, with Infinity as the upper bound.
-    currentFilters[propId] = [parseFloat(values[0] as string), Infinity];
+    const value = parseFloat(values[0] as string);
+    if (sliderOptions?.direction === 'less') {
+      currentFilters[propId] = [-Infinity, value];
+    } else { // 'greater' or undefined defaults to greater
+      currentFilters[propId] = [value, Infinity];
+    }
     applyFilters();
   });
 
-  sliderInstances[propId] = slider; // Store the instance
+  sliderInstances[propId] = slider;
 }
 
 /**
@@ -236,10 +258,10 @@ function generatePropertyFilter(property: UIProperty, parentElement: HTMLElement
       const maxVal = Math.ceil(Math.max(...values));
       initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
       listItem.appendChild(sliderWrapper);
-    } else if (property.type === "stepped-continuous-single") {
+    } else if (property.type === "stepped-continuous-single" || property.type === "continuous-single") {
       const sliderWrapper = document.createElement('div');
       sliderWrapper.style.padding = '0.75em';
-      initializeSteppedSlider(propId, sliderWrapper);
+      initializeSingleHandleSlider(property, sliderWrapper);
       listItem.appendChild(sliderWrapper);
     }
   }
@@ -294,7 +316,7 @@ function applyFilters(): void {
   // Separate filters into categorical and continuous based on UI config
   for (const key in currentFilters) {
     const property = uiConfig.flatMap(g => g.properties).find(p => p.id === key);
-    if (property && (property.type === 'continuous' || property.type === 'stepped-continuous-single' || property.type === 'boolean')) {
+    if (property && (property.type === 'continuous' || property.type === 'stepped-continuous-single' || property.type === 'boolean' || property.type === 'continuous-single')) {
       continuousFilters[key] = currentFilters[key] as [number, number];
     } else {
       categoricalFilters[key] = currentFilters[key] as string[];
@@ -540,7 +562,7 @@ export {
   applyFilters,
   updateCategoricalFilters,
   initializeNoUiSlider,
-  initializeSteppedSlider,
+  initializeSingleHandleSlider,
   productData,
   itemsjsInstance,
   currentFilters,
