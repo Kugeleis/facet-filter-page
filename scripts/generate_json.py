@@ -11,16 +11,24 @@ SOURCE_CSV_DIR = os.path.dirname(__file__)
 
 
 def type_convert(value: str):
-    """Attempts to convert a string value to a more specific type (int, float)."""
+    """
+    Attempts to convert a string value to a more specific type.
+    - If it's a number, it's converted to an int if it has no decimal part, otherwise a float.
+    - Empty strings are converted to null.
+    """
     if value == '':
         return None  # Represent empty strings as null in JSON
+
     try:
-        return int(value)
+        # First, try to convert to a float
+        float_val = float(value)
+        # If the float is actually an integer (e.g., 10.0), convert to int
+        if float_val.is_integer():
+            return int(float_val)
+        return float_val
     except (ValueError, TypeError):
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return value
+        # If it can't be a float, it's just a string
+        return value
 
 
 def convert_csv2json(csv_file, json_path):

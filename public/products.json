@@ -4,55 +4,55 @@
         "name": "Sedan X",
         "color": "Red",
         "material": "Leather",
-        "weight_kg": 1500.0,
-        "price": 35000.0
+        "weight_kg": 1500,
+        "price": 35000
     },
     {
         "id": 2,
         "name": "Truck Y",
         "color": "Blue",
         "material": "Vinyl",
-        "weight_kg": 2100.0,
-        "price": 45000.0
+        "weight_kg": 2100,
+        "price": 45000
     },
     {
         "id": 3,
         "name": "Hatch Z",
         "color": "Red",
         "material": "Cloth",
-        "weight_kg": 1200.0,
-        "price": 22000.0
+        "weight_kg": 1200,
+        "price": 22000
     },
     {
         "id": 4,
         "name": "Sedan A",
         "color": "Black",
         "material": "Leather",
-        "weight_kg": 1600.0,
-        "price": 38000.0
+        "weight_kg": 1600,
+        "price": 38000
     },
     {
         "id": 5,
         "name": "Truck B",
         "color": "Blue",
         "material": "Vinyl",
-        "weight_kg": 2200.0,
-        "price": 50000.0
+        "weight_kg": 2200,
+        "price": 50000
     },
     {
         "id": 6,
         "name": "Coupe C",
         "color": "Black",
         "material": "Cloth",
-        "weight_kg": 1450.0,
-        "price": 29500.0
+        "weight_kg": 1450,
+        "price": 29500
     },
     {
         "id": 7,
         "name": "Van D",
         "color": "White",
         "material": "Vinyl",
-        "weight_kg": 2500.0,
-        "price": 40000.0
+        "weight_kg": 2500,
+        "price": 40000
     }
 ]
