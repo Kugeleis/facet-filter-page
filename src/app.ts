@@ -179,7 +179,10 @@ export async function initializeApp(): Promise<void> {
 
     // --- Apply UI configurations ---
     document.title = title || 'Vite Facet Filter App';
-    mainTitleElement.textContent = title || 'Product Showcase';
+    const mainTitleLink = mainTitleElement?.querySelector('a');
+    if (mainTitleLink) {
+      mainTitleLink.textContent = title || 'Product Showcase';
+    }
     filtersLabelElement.textContent = ui?.filtersLabel || 'Filters';
     setNoProductsMessage(ui?.noProductsMessage || 'No products match your current filters.');
 
