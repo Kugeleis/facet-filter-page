@@ -6,6 +6,8 @@ import type { ItemsJs } from 'itemsjs';
 import noUiSlider from 'nouislider';
 import type { API as NoUiSliderAPI } from 'nouislider';
 import 'nouislider/dist/nouislider.css';
+import 'bulma-switch-control/css/main.css';
+
 
 // --- Type Definitions ---
 export interface Product extends Record<string, any> {
@@ -16,7 +18,7 @@ export interface Product extends Record<string, any> {
 export interface UIProperty {
   id: string; // Changed from keyof Product to be generic
   title: string;
-  type: 'categorical' | 'continuous' | 'stepped-continuous-single';
+  type: 'categorical' | 'continuous' | 'stepped-continuous-single' | 'boolean';
 }
 
 export interface UIGroup {
@@ -33,9 +35,11 @@ let itemsjsInstance: ItemsJs<Product>;
 let currentFilters: Filters = {};
 let productData: Product[] = [];
 let sliderInstances: Record<string, NoUiSliderAPI> = {}; // To hold slider instances
+let switchInstances: Record<string, HTMLInputElement> = {}; // To hold switch instances
 let cardTemplateMapping: TemplateMapping[] = [];
 let uiConfig: UIGroup[] = [];
 let noProductsMessage: string = "No products match your current filters."; // Add default
+let allAggregations: any; // Will hold the aggregations for the whole dataset
 
 // --- NEW INTERFACES & CONFIG ---
 export interface TemplateMapping {
@@ -144,6 +148,7 @@ function initializeSteppedSlider(propId: string, parentElement: HTMLElement): vo
 
   const slider = noUiSlider.create(sliderDiv, {
     start: [uniqueVersions[0]], // Start at the lowest version
+    connect: 'lower', // Fill the bar from the left to the handle
     range: rangeMapping,
     snap: true, // Snap to the defined steps in the range
     step: 1, // This is nominal; 'snap' is what enforces the steps
@@ -170,35 +175,73 @@ function initializeSteppedSlider(propId: string, parentElement: HTMLElement): vo
 function generatePropertyFilter(property: UIProperty, parentElement: HTMLElement): void {
   const propId = property.id;
   const listItem = document.createElement('li');
-  const titleLink = document.createElement('a');
-  titleLink.textContent = property.title;
-  listItem.appendChild(titleLink);
 
-  if (property.type === "categorical") {
-    const facetContainer = document.createElement('ul');
-    facetContainer.id = `facet-container-${propId}`;
-    listItem.appendChild(facetContainer);
+  if (property.type === "boolean") {
+    // For boolean, we create a flex container to align title and switch
+    const switchContainer = document.createElement('div');
+    switchContainer.className = 'is-flex is-justify-content-space-between is-align-items-center';
 
-    facetContainer.addEventListener('change', (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (target.type === 'checkbox') {
-        updateCategoricalFilters(propId, target.value, target.checked);
+    const title = document.createElement('span');
+    title.textContent = property.title;
+    switchContainer.appendChild(title);
+
+    const switchInput = document.createElement('input');
+    switchInput.id = `switch-${propId}`;
+    switchInput.type = 'checkbox';
+    switchInput.className = 'switch is-rounded';
+    switchInput.checked = false; // Start unchecked
+
+    const switchLabel = document.createElement('label');
+    switchLabel.htmlFor = switchInput.id;
+    switchContainer.appendChild(switchInput);
+    switchContainer.appendChild(switchLabel);
+
+    // Store the instance for reset functionality
+    switchInstances[propId] = switchInput;
+
+    switchInput.addEventListener('change', () => {
+      if (switchInput.checked) {
+        // When checked, we filter for items where the value is 1
+        currentFilters[propId] = [1, 1];
+      } else {
+        // When unchecked, remove the filter
+        delete currentFilters[propId];
       }
+      applyFilters();
     });
 
-  } else if (property.type === "continuous") {
-    const sliderWrapper = document.createElement('div');
-    sliderWrapper.style.padding = '0.75em';
-    const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
-    const minVal = Math.floor(Math.min(...values));
-    const maxVal = Math.ceil(Math.max(...values));
-    initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
-    listItem.appendChild(sliderWrapper);
-  } else if (property.type === "stepped-continuous-single") {
-    const sliderWrapper = document.createElement('div');
-    sliderWrapper.style.padding = '0.75em';
-    initializeSteppedSlider(propId, sliderWrapper);
-    listItem.appendChild(sliderWrapper);
+    listItem.appendChild(switchContainer);
+  } else {
+    // For all other types, keep the existing structure
+    const titleLink = document.createElement('a');
+    titleLink.textContent = property.title;
+    listItem.appendChild(titleLink);
+
+    if (property.type === "categorical") {
+      const facetContainer = document.createElement('ul');
+      facetContainer.id = `facet-container-${propId}`;
+      listItem.appendChild(facetContainer);
+
+      facetContainer.addEventListener('change', (e: Event) => {
+        const target = e.target as HTMLInputElement;
+        if (target.type === 'checkbox') {
+          updateCategoricalFilters(propId, target.value, target.checked);
+        }
+      });
+    } else if (property.type === "continuous") {
+      const sliderWrapper = document.createElement('div');
+      sliderWrapper.style.padding = '0.75em';
+      const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
+      const minVal = Math.floor(Math.min(...values));
+      const maxVal = Math.ceil(Math.max(...values));
+      initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);
+      listItem.appendChild(sliderWrapper);
+    } else if (property.type === "stepped-continuous-single") {
+      const sliderWrapper = document.createElement('div');
+      sliderWrapper.style.padding = '0.75em';
+      initializeSteppedSlider(propId, sliderWrapper);
+      listItem.appendChild(sliderWrapper);
+    }
   }
 
   parentElement.appendChild(listItem);
@@ -235,6 +278,11 @@ function resetFilters(): void {
     sliderInstances[propId].reset();
   }
 
+  // Reset all switch instances
+  for (const propId in switchInstances) {
+    switchInstances[propId].checked = false;
+  }
+
   // Re-apply filters, which will now be empty
   applyFilters();
 }
@@ -246,7 +294,7 @@ function applyFilters(): void {
   // Separate filters into categorical and continuous based on UI config
   for (const key in currentFilters) {
     const property = uiConfig.flatMap(g => g.properties).find(p => p.id === key);
-    if (property && (property.type === 'continuous' || property.type === 'stepped-continuous-single')) {
+    if (property && (property.type === 'continuous' || property.type === 'stepped-continuous-single' || property.type === 'boolean')) {
       continuousFilters[key] = currentFilters[key] as [number, number];
     } else {
       categoricalFilters[key] = currentFilters[key] as string[];
@@ -259,10 +307,7 @@ function applyFilters(): void {
     filters: categoricalFilters,
   });
 
-  // This will hold the final aggregations we want to render
-  let finalAggregations = results.data.aggregations;
-
-  // If continuous filters are active, we must manually filter items AND recalculate aggregations
+  // If continuous filters are active, we must manually filter the results
   if (Object.keys(continuousFilters).length > 0) {
     results.data.items = results.data.items.filter(item => {
       return Object.entries(continuousFilters).every(([key, range]) => {
@@ -270,41 +315,19 @@ function applyFilters(): void {
         return value >= range[0] && value <= range[1];
       });
     });
-
-    // --- Manual Aggregation Recalculation ---
-    const recalculateAggregations = (items: Product[]) => {
-      const newAggregations: Record<string, { buckets: { key: string; doc_count: number }[] }> = {};
-      const categoricalProps = uiConfig.flatMap(g => g.properties).filter(p => p.type === 'categorical');
-
-      categoricalProps.forEach(prop => {
-        const counts: Record<string, number> = {};
-        items.forEach(item => {
-          const value = item[prop.id] as string;
-          if (value) {
-            counts[value] = (counts[value] || 0) + 1;
-          }
-        });
-        newAggregations[prop.id] = {
-          buckets: Object.entries(counts).map(([key, count]) => ({ key, doc_count: count }))
-        };
-      });
-      return newAggregations;
-    };
-
-    // Overwrite the aggregations with our recalculated ones
-    finalAggregations = recalculateAggregations(results.data.items);
   }
 
   console.log("Filtered items:", results.data.items);
-  console.log("Final Aggregations data:", JSON.stringify(finalAggregations, null, 2));
 
   renderProductCards(results.data.items, cardTemplateMapping);
 
-  // --- Render facets using the final aggregations ---
-  if (finalAggregations) {
-    Object.keys(finalAggregations).forEach(propId => {
-      const aggregation = finalAggregations[propId];
-      if (aggregation && aggregation.buckets) {
+  // --- Render facets using the aggregations from the full dataset ---
+  if (allAggregations) {
+    Object.keys(allAggregations).forEach(propId => {
+      const aggregation = allAggregations[propId];
+      // We only want to render facets for categorical properties
+      const property = uiConfig.flatMap(g => g.properties).find(p => p.id === propId);
+      if (aggregation && aggregation.buckets && property && property.type === 'categorical') {
         renderFacets(aggregation.buckets, propId);
       }
     });
@@ -482,6 +505,12 @@ async function initializeApp(): Promise<void> {
       }, {} as any),
   };
   itemsjsInstance = itemsjs(productData, itemsjsConfiguration);
+
+  // --- Store initial aggregations ---
+  const initialSearch = itemsjsInstance.search({ per_page: productData.length });
+  allAggregations = initialSearch.data.aggregations;
+  console.log("Stored all aggregations:", allAggregations);
+
 
   uiConfig.forEach(group => {
     const groupLabel = document.createElement('p');

@@ -15,3 +15,22 @@
   font-size: 11px;
   color: #7a7a7a;
 }
+
+/* --- noUiSlider Customization --- */
+
+/* Style the connect bar (the selected range) */
+.noUi-connect {
+  background: var(--primary-color);
+}
+
+/* Style the handles */
+.noUi-handle {
+  border: 2px solid var(--primary-color);
+  background: #FFF;
+  box-shadow: none;
+}
+
+/* Remove the box-shadow on focused handles for a cleaner look */
+.noUi-target.noUi-focused .noUi-handle {
+  box-shadow: none;
+}

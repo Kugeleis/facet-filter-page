@@ -4,13 +4,13 @@
     "properties": [
       { "id": "Internet", "title": "Internet Type", "type": "categorical" },
       { "id": "WLAN_Standard", "title": "WiFi Standard", "type": "categorical" },
-      { "id": "Mesh", "title": "Mesh Support", "type": "categorical" }
+      { "id": "Mesh", "title": "Mesh Support", "type": "boolean" }
     ]
   },
   {
     "groupName": "Features & Power",
     "properties": [
-      { "id": "NAS_Funktion", "title": "NAS Function", "type": "categorical" },
+      { "id": "NAS_Funktion", "title": "NAS Function", "type": "boolean" },
       { "id": "Stromverbrauch_W", "title": "Power (W)", "type": "continuous" }
     ]
   },
