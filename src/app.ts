@@ -3,6 +3,7 @@ import itemsjs from 'itemsjs';
 import {
   itemsjsInstance,
   currentFilters,
+  searchQuery,
   productData,
   sliderInstances,
   switchInstances,
@@ -11,6 +12,7 @@ import {
   allAggregations,
   setItemsjsInstance,
   setCurrentFilters,
+  setSearchQuery,
   setProductData,
   setCardTemplateMapping,
   setUiConfig,
@@ -49,6 +51,12 @@ export function updateCategoricalFilters(propId: string, value: string, isChecke
 
 export function resetFilters(): void {
   setCurrentFilters({});
+  setSearchQuery('');
+
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  if (searchInput) {
+    searchInput.value = '';
+  }
 
   // Reset all the noUiSlider instances
   for (const propId in sliderInstances) {
@@ -80,6 +88,7 @@ export function applyFilters(): void {
 
   // Get initial results from itemsjs, including aggregations
   let results = itemsjsInstance.search({
+    query: searchQuery,
     per_page: productData.length,
     filters: categoricalFilters,
   });
@@ -124,12 +133,14 @@ export function applyFilters(): void {
 }
 
 export async function initializeApp(): Promise<void> {
+  let searchFieldName = 'name'; // Default search field
   const filterGroupsContainer = document.getElementById('filter-groups-container');
   const productContainer = document.getElementById('product-list-container');
   const mainTitleElement = document.getElementById('main-title');
   const filtersLabelElement = document.getElementById('filters-label');
   const appVersionElement = document.getElementById('app-version');
   const resetButton = document.getElementById('reset-filters-button');
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
 
 
   if (appVersionElement) {
@@ -140,11 +151,15 @@ export async function initializeApp(): Promise<void> {
   const modalBackground = modal?.querySelector('.modal-background');
   const modalCloseButton = modal?.querySelector('.delete');
 
-  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement || !resetButton || !modal || !modalBackground || !modalCloseButton) {
+  if (!filterGroupsContainer || !productContainer || !mainTitleElement || !filtersLabelElement || !resetButton || !modal || !modalBackground || !modalCloseButton || !searchInput) {
     console.error("A required element was not found in the DOM.");
     return;
   }
 
+  searchInput.addEventListener('input', (e) => {
+    setSearchQuery((e.target as HTMLInputElement).value);
+    applyFilters();
+  });
   resetButton.addEventListener('click', resetFilters);
   modalBackground.addEventListener('click', hideProductModal);
   modalCloseButton.addEventListener('click', hideProductModal);
@@ -207,6 +222,12 @@ export async function initializeApp(): Promise<void> {
     setUiConfig(await uiConfigResponse.json());
     const rawTemplateConfig = await templateResponse.json();
 
+    // Determine the searchable field from the template config
+    const nameMapping = rawTemplateConfig.find((m: { field:string }) => m.field === 'name');
+    if (nameMapping) {
+      searchFieldName = nameMapping.property;
+    }
+
     // Parse format strings into functions
     setCardTemplateMapping(rawTemplateConfig.map((mapping: any) => {
       if (mapping.format && typeof mapping.format === 'string') {
@@ -231,7 +252,7 @@ export async function initializeApp(): Promise<void> {
   }
 
   const itemsjsConfiguration = {
-    searchableFields: Object.keys(productData[0] || {}),
+    searchableFields: [searchFieldName],
     aggregations: uiConfig.flatMap(group => group.properties)
       .reduce((acc, p) => {
         acc[p.id] = { title: p.title, size: 100, type: 'terms' };

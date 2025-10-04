@@ -5,6 +5,7 @@ import type { Product, Filters, TemplateMapping, UIGroup } from '../types';
 
 export let itemsjsInstance: ItemsJs<Product>;
 export let currentFilters: Filters = {};
+export let searchQuery: string = '';
 export let productData: Product[] = [];
 export let sliderInstances: Record<string, NoUiSliderAPI> = {};
 export let switchInstances: Record<string, HTMLInputElement> = {};
@@ -20,6 +21,10 @@ export function setItemsjsInstance(instance: ItemsJs<Product>) {
 
 export function setCurrentFilters(filters: Filters) {
   currentFilters = filters;
+}
+
+export function setSearchQuery(query: string) {
+  searchQuery = query;
 }
 
 export function setProductData(data: Product[]) {
