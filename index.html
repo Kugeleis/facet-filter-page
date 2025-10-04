@@ -12,7 +12,18 @@
 <body>
   <section class="section">
     <div class="container">
-      <h1 id="main-title" class="title">Product Showcase</h1>
+      <div class="level">
+        <div class="level-left">
+          <div class="level-item">
+            <h1 id="main-title" class="title">Product Showcase</h1>
+          </div>
+        </div>
+        <div class="level-right">
+          <div class="level-item">
+            <div id="product-count-container" class="has-text-right"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -62,6 +73,19 @@
       </p>
     </div>
   </footer>
+
+  <div id="product-modal" class="modal">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title">Product Details</p>
+        <button class="delete" aria-label="close"></button>
+      </header>
+      <section id="product-modal-content" class="modal-card-body">
+        <!-- Product details will be injected here -->
+      </section>
+    </div>
+  </div>
 </body>
 
 </html>

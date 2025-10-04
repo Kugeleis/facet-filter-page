@@ -108,6 +108,7 @@ describe('Application Logic', () => {
         document.body.innerHTML = `
             <body>
                 <h1 id="main-title"></h1>
+                <div id="product-count-container"></div>
                 <div id="filter-sidebar">
                     <p id="filters-label"></p>
                     <button id="reset-filters-button"></button>
@@ -131,6 +132,17 @@ describe('Application Logic', () => {
                     </div>
                   </div>
                 </template>
+                <div id="product-modal" class="modal">
+                  <div class="modal-background"></div>
+                  <div class="modal-card">
+                    <header class="modal-card-head">
+                      <p class="modal-card-title">Product Details</p>
+                      <button class="delete" aria-label="close"></button>
+                    </header>
+                    <section id="product-modal-content" class="modal-card-body"></section>
+                  </div>
+                </div>
+                <span id="app-version"></span>
             </body>`;
 
         (fetch as Mock).mockImplementation((url: string) => {
