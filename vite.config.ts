@@ -16,5 +16,10 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     // globals: true, // Optional: to avoid importing describe, it, etc. in every file
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/e2e/**', // Exclude E2E tests from the unit test runner
+    ],
   },
 });
