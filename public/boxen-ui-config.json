@@ -11,7 +11,14 @@
     "groupName": "Features & Power",
     "properties": [
       { "id": "NAS_Funktion", "title": "NAS Function", "type": "boolean" },
-      { "id": "Stromverbrauch_W", "title": "Power (W)", "type": "continuous" }
+      {
+        "id": "Stromverbrauch_W",
+        "title": "Power (W)",
+        "type": "continuous-single",
+        "sliderOptions": {
+          "direction": "less"
+        }
+      }
     ]
   },
   {
@@ -20,7 +27,10 @@
       {
         "id": "Aktuelle_Firmware_Version",
         "title": "Firmware Version (min.)",
-        "type": "stepped-continuous-single"
+        "type": "stepped-continuous-single",
+        "sliderOptions": {
+          "direction": "greater"
+        }
       }
     ]
   }
