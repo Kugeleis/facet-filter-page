@@ -1,12 +1,12 @@
 // src/ui/products.ts
 import type { Product, TemplateMapping } from '../types';
 import { showProductModal } from './modal';
-import { noProductsMessage } from '../state';
+import { noProductsMessage, cardTemplateMapping } from '../state';
+import ProductCard from '../components/ProductCard.svelte';
 
-export function renderProductCards(products: Product[], templateMapping: TemplateMapping[]): void {
+export function renderProductCards(products: Product[]): void {
   const container = document.getElementById('product-list-container');
-  const template = document.getElementById('product-card-template') as HTMLTemplateElement;
-  if (!container || !template) return;
+  if (!container) return;
 
   container.innerHTML = '';
 
@@ -16,29 +16,20 @@ export function renderProductCards(products: Product[], templateMapping: Templat
   }
 
   products.forEach(product => {
-    const cardClone = template.content.cloneNode(true) as DocumentFragment;
-    const cardElement = cardClone.querySelector('.card');
+    const cardContainer = document.createElement('div');
+    container.appendChild(cardContainer);
 
-    templateMapping.forEach(mapping => {
-      const element = cardClone.querySelector(`[data-template-field="${mapping.field}"]`) as HTMLElement;
-      if (element) {
-        const rawValue = product[mapping.property];
-        let displayValue = rawValue;
-
-        if (mapping.format) {
-          displayValue = mapping.format(rawValue);
-        }
-
-        element.textContent = `${mapping.prefix || ''}${displayValue}${mapping.suffix || ''}`;
-      }
+    const card = new ProductCard({
+      target: cardContainer,
+      props: {
+        product,
+        templateMapping,
+      },
     });
 
-    if (cardElement) {
-      cardElement.addEventListener('click', () => {
-        showProductModal(product);
-      });
-    }
-
-    container.appendChild(cardClone);
+    // Attach the click listener to the container, since the Svelte component is now in charge of the DOM
+    cardContainer.addEventListener('click', () => {
+      showProductModal(product);
+    });
   });
 }

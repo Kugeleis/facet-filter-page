@@ -105,7 +105,7 @@ export function applyFilters(): void {
 
   console.log("Filtered items:", results.data.items);
 
-  renderProductCards(results.data.items, cardTemplateMapping);
+  renderProductCards(results.data.items);
 
   const countContainer = document.getElementById('product-count-container');
   if (countContainer) {

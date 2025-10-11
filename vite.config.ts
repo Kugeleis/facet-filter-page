@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { fileURLToPath, URL } from 'url';
 import { vitePluginMdToHTML } from 'vite-plugin-md-to-html';
 import { resolve } from 'path';
@@ -9,13 +10,14 @@ export default defineConfig({
   define: {
     '__APP_VERSION__': JSON.stringify(process.env.npm_package_version),
   },
-  plugins: [vitePluginMdToHTML()],
+  plugins: [svelte(), vitePluginMdToHTML()],
 
   build: {
     rollupOptions: {
       input: {
         main: resolve(fileURLToPath(new URL('.', import.meta.url)), 'index.html'),
         about: resolve(fileURLToPath(new URL('.', import.meta.url)), 'about.html'),
+        testCard: resolve(fileURLToPath(new URL('.', import.meta.url)), 'test-card.html'),
       },
     },
   },
