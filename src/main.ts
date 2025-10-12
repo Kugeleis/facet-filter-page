@@ -3,8 +3,10 @@ import 'nouislider/dist/nouislider.css';
 import 'bulma-switch-control/css/main.css';
 import './style.css';
 import './theme.css';
-import { initializeApp } from './app';
+import App from './App.svelte';
 
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApp();
+const app = new App({
+  target: document.getElementById('app')!,
 });
+
+export default app;

@@ -1,30 +1,7 @@
 <script lang="ts">
-  import type { Product, TemplateMapping } from '../types';
+  import type { Product } from '../types/index';
 
   export let product: Product;
-  export let templateMapping: TemplateMapping[];
-
-  let displayFields: { label: string, value: any }[] = [];
-
-  $: {
-    const getDisplayValue = (fieldConfig: any, productData: Product) => {
-      const value = productData[fieldConfig.property];
-      if (fieldConfig.format && typeof fieldConfig.format === 'function') {
-        return fieldConfig.format(value);
-      }
-      return value;
-    };
-
-    displayFields = templateMapping.map(field => {
-      if (field.field !== 'name') { // 'name' is handled by the title
-        return {
-          label: field.label,
-          value: getDisplayValue(field, product)
-        };
-      }
-      return null;
-    }).filter(f => f !== null);
-  }
 </script>
 
 <div class="column is-one-third">
@@ -32,9 +9,10 @@
     <div class="card-content">
       <p class="title is-4">{product.name}</p>
       <div class="content">
-        {#each displayFields as field}
-          <p><strong>{field.label}:</strong> {field.value}</p>
-        {/each}
+        <p><strong>Color:</strong> {product.color}</p>
+        <p><strong>Material:</strong> {product.material}</p>
+        <p><strong>Weight:</strong> {product.weight} kg</p>
+        <p class="subtitle is-5 has-text-weight-bold mt-4">{product.price}</p>
       </div>
     </div>
   </div>

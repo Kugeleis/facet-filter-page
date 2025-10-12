@@ -20,9 +20,15 @@ export interface UIGroup {
   properties: UIProperty[];
 }
 
+export type UIConfig = UIGroup[];
+
 export type CategoricalFilter = string[];
 export type ContinuousFilter = [number, number];
-export type Filters = Record<string, CategoricalFilter | ContinuousFilter>;
+export type SteppedContinuousSingleFilter = [number, number];
+export type BooleanFilter = [number, number];
+export type ContinuousSingleFilter = [number, number];
+
+export type Filters = Record<string, CategoricalFilter | ContinuousFilter | SteppedContinuousSingleFilter | BooleanFilter | ContinuousSingleFilter>;
 
 export interface TemplateMapping {
   field: string;
