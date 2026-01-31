@@ -25,6 +25,7 @@
     "bulma": "^1.0.4",
     "bulma-switch-control": "^1.2.2",
     "itemsjs": "^2.1.25",
+    "nanostores": "^1.1.0",
     "nouislider": "^15.8.1"
   }
 }
