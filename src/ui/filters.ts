@@ -37,6 +37,24 @@ export function initializeNoUiSlider(propId: string, minVal: number, maxVal: num
 }
 
 /**
+ * Helper to extract numeric values from product data for a given property.
+ * Handles both numbers and numeric strings.
+ */
+function getNumericValues(propId: string): number[] {
+  return productData
+    .map(item => {
+      const val = item[propId];
+      if (typeof val === 'number') return val;
+      if (typeof val === 'string' && val.trim() !== '') {
+        const num = parseFloat(val);
+        return isNaN(num) ? null : num;
+      }
+      return null;
+    })
+    .filter((v): v is number => v !== null);
+}
+
+/**
  * Initializes a single-thumb noUiSlider for continuous or stepped values.
  * The behavior (less than/greater than) is determined by the property's sliderOptions.
  */
@@ -52,7 +70,7 @@ export function initializeSingleHandleSlider(property: UIProperty, parentElement
   let sliderConfig: any;
 
   if (isStepped) {
-    const uniqueValues = [...new Set(productData.map(item => item[propId]).filter(v => typeof v === 'number' && v !== null))] as number[];
+    const uniqueValues = [...new Set(getNumericValues(propId))];
     uniqueValues.sort((a, b) => a - b);
 
     if (uniqueValues.length < 2) {
@@ -77,7 +95,7 @@ export function initializeSingleHandleSlider(property: UIProperty, parentElement
       step: 1, // Nominal, snap is what matters
     };
   } else { // 'continuous-single'
-    const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
+    const values = getNumericValues(propId);
     const minVal = Math.floor(Math.min(...values));
     const maxVal = Math.ceil(Math.max(...values));
 
@@ -175,7 +193,7 @@ export function generatePropertyFilter(property: UIProperty, parentElement: HTML
     } else if (property.type === "continuous") {
       const sliderWrapper = document.createElement('div');
       sliderWrapper.style.padding = '0.75em';
-      const values = productData.map(item => item[propId]).filter(v => typeof v === 'number') as number[];
+      const values = getNumericValues(propId);
       const minVal = Math.floor(Math.min(...values));
       const maxVal = Math.ceil(Math.max(...values));
       initializeNoUiSlider(propId, minVal, maxVal, sliderWrapper);

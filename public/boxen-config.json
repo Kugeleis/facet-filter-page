@@ -3,35 +3,27 @@
         "field": "name",
         "property": "Modell",
         "prefix": "",
-        "suffix": "",
-        "format": null
+        "suffix": ""
     },
     {
         "field": "color",
         "property": "WLAN_Standard",
-        "prefix": "WiFi Standard:",
-        "suffix": null,
-        "format": null
+        "prefix": "WiFi Standard:"
     },
     {
         "field": "material",
         "property": "Internet",
-        "prefix": "Internet Type:",
-        "suffix": null,
-        "format": null
+        "prefix": "Internet Type:"
     },
     {
         "field": "weight",
         "property": "Stromverbrauch_W",
         "prefix": "",
-        "suffix": " W",
-        "format": null
+        "suffix": " W"
     },
     {
         "field": "price",
-        "property": "Datum_Markteinf\u00fchrung",
-        "prefix": "Released:",
-        "suffix": null,
-        "format": null
+        "property": "Datum_Markteinführung",
+        "prefix": "Released:"
     }
 ]
