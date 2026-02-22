@@ -1,1 +1,29 @@
-{"values": [{"field": "name", "property": "Modell", "prefix": "", "suffix": ""}, {"field": "color", "property": "WLAN_Standard", "prefix": "WiFi Standard:"}, {"field": "material", "property": "Internet", "prefix": "Internet Type:"}, {"field": "weight", "property": "Stromverbrauch_W", "prefix": "", "suffix": " W"}, {"field": "price", "property": "Datum_Markteinf\u00fchrung", "prefix": "Released:"}]}
+[
+    {
+        "field": "name",
+        "property": "Modell",
+        "prefix": "",
+        "suffix": ""
+    },
+    {
+        "field": "color",
+        "property": "WLAN_Standard",
+        "prefix": "WiFi Standard:"
+    },
+    {
+        "field": "material",
+        "property": "Internet",
+        "prefix": "Internet Type:"
+    },
+    {
+        "field": "weight",
+        "property": "Stromverbrauch_W",
+        "prefix": "",
+        "suffix": " W"
+    },
+    {
+        "field": "price",
+        "property": "Datum_Markteinführung",
+        "prefix": "Released:"
+    }
+]

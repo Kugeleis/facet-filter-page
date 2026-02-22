@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Dependency guard
@@ -105,13 +106,70 @@ def save(data: benedict, target: Path, fmt: str) -> None:
     saver(filepath=str(target))
 
 
+def unwrap_values(data: Any) -> Any:
+    """
+    Unwrap 'values' if it is the only key and its value is a list.
+
+    Args:
+        data: The data to unwrap.
+
+    Returns:
+        The unwrapped list if applicable, otherwise the original data.
+    """
+    if (
+        isinstance(data, dict)
+        and "values" in data
+        and len(data) == 1
+        and isinstance(data["values"], list)
+    ):
+        return data["values"]
+    return data
+
+
+def save_any(data: Any, target: Path, fmt: str) -> None:
+    """
+    Write data to target in specified format, handling both dict and list.
+
+    Args:
+        data: The data to save.
+        target: The target file path.
+        fmt: The target format.
+    """
+    if fmt == "json":
+        import json
+
+        with open(target, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+    else:
+        # For other formats, benedict requires a dict.
+        # If data is a list, wrap it back in a benedict instance.
+        data_to_save = data
+        if isinstance(data, list):
+            data_to_save = benedict({"values": data})
+        elif not isinstance(data, benedict):
+            data_to_save = benedict(data)
+        save(data_to_save, target, fmt)
+
+
 # ---------------------------------------------------------------------------
 # Output path builder
 # ---------------------------------------------------------------------------
 
 
-def build_output_path(source: Path, target_fmt: str, output_dir: str|Path | None) -> Path:
-    """Derive the output file path from the source, target format and output dir."""
+def build_output_path(
+    source: Path, target_fmt: str, output_dir: str | Path | None
+) -> Path:
+    """
+    Derive the output file path from the source, target format and output dir.
+
+    Args:
+        source: The source file path.
+        target_fmt: The target format name.
+        output_dir: The directory for the output file.
+
+    Returns:
+        The derived output path.
+    """
     _, ext = FORMATS[target_fmt]
     directory = output_dir if output_dir is not None else source.parent
     return Path(directory) / (source.stem + ext)
@@ -127,22 +185,30 @@ def convert(source: Path, target_fmt: str, output_dir: str | Path | None) -> Pat
     Convert *source* to *target_fmt*, write the result, and return the
     output path.
 
-    Raises ValueError for same-format conversion or unsupported formats.
+    Args:
+        source: The source file path.
+        target_fmt: The target format name.
+        output_dir: The directory for the output file.
+
+    Returns:
+        The path to the converted file.
+
+    Raises:
+        ValueError: For same-format conversion or unsupported formats.
     """
     source_fmt = detect_format(source)
-
-    if source_fmt == target_fmt:
-        raise ValueError(
-            f"Source and target formats are both '{target_fmt}'. Nothing to convert."
-        )
-
     output_path = build_output_path(source, target_fmt, output_dir)
+
+    # If source and target formats are same, check if we're actually changing the location
+    # or if we might need to unwrap values.
+    # We'll proceed anyway to be safe and allow 'cleaning' of JSON files.
 
     if output_dir is not None:
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     data = load(source, source_fmt)
-    save(data, output_path, target_fmt)
+    transformed_data = unwrap_values(data)
+    save_any(transformed_data, output_path, target_fmt)
 
     return output_path
 
