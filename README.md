@@ -1,90 +1,120 @@
-# Data-Agnostic Facet Filter Page
+# Data-Agnostic Facet Filter Page (Developer Documentation)
 
-This project is a highly configurable, data-agnostic single-page application that demonstrates a faceted product filtering system. It is built with Vite and Bulma, and it uses `itemsjs` for efficient client-side filtering.
+This repository contains a highly configurable, data-agnostic single-page application that demonstrates a faceted product filtering system. It is built with Vite, TypeScript, and Bulma, and it uses `itemsjs` for efficient client-side filtering.
 
-The application is designed to be completely decoupled from the data it displays. You can easily swap out datasets by providing a new set of data and configuration files, without touching the source code.
+This document is intended for developers who want to set up, maintain, or extend the application. For a high-level overview of features, please see the [About Page](about.html).
 
 ## How It Works
 
-The application's behavior is controlled by a single configuration file: `public/setup.json`. At runtime, the app reads this file to determine:
+The application's behavior is controlled by configuration files. At runtime, the app reads `public/setup.json` to determine:
 - Which dataset to load.
 - What title to display on the page.
 - The color theme (primary and link colors).
 - UI text for labels and messages.
 
-This approach allows for maximum flexibility and reusability.
+The dataset itself is composed of three JSON files in the `public/` directory:
+1.  **`[dataset].json`**: The actual product data.
+2.  **`[dataset]-config.json`**: Mapping of data properties to the UI template.
+3.  **`[dataset]-ui-config.json`**: Configuration for filters and facet groups.
 
 ## Project Setup and Local Development
 
 ### Prerequisites
 
-- Node.js and npm
-- Python 3
+- **Node.js and npm**: For the frontend application.
+- **[Go Task](https://taskfile.dev/)**: For running development tasks.
+- **[uv](https://docs.astral.sh/uv/)**: For managing Python scripts and dependencies.
 
 ### 1. Install Dependencies
 
-First, install the necessary Node.js packages:
+Install Node.js packages and prepare the environment:
 
 ```bash
-npm install
+task setup
 ```
 
-### 2. Prepare Your Dataset
+### 2. Prepare and Maintain Your Dataset
 
-To use your own dataset, you need to create three CSV files inside the `scripts/` directory. Let's assume your dataset is named `my_awesome_products`. You would create:
+Data is maintained in the `scripts/` directory in CSV or YAML format. To use your own dataset (e.g., `my_products`):
 
-1.  **`scripts/my_awesome_products.csv`**: The raw data. Each row is an item, and each column is a property.
-2.  **`scripts/my_awesome_products-config.csv`**: Defines how data from your CSV maps to the HTML template. It needs `field` and `property` columns.
-3.  **`scripts/my_awesome_products-ui-config.csv`**: Defines the filter groups and properties for the UI. It needs `groupName`, `id`, `title`, and `type` (`categorical` or `continuous`).
+1.  Create **`scripts/my_products.csv`** (or `.yaml`): The raw product data.
+2.  Create **`scripts/my_products-config.csv`**: Defines how data maps to the UI.
+3.  Create **`scripts/my_products-ui-config.yaml`** (or `.csv`): Defines filter groups and types.
+
+#### Supported Filter Types:
+- `categorical`: Multi-select checkboxes.
+- `continuous`: Dual-handle range slider.
+- `boolean`: On/Off switch.
+- `continuous-single`: Single-handle slider (min or max).
+- `stepped-continuous-single`: Single-handle slider that snaps to values.
 
 ### 3. Generate JSON Data
 
-The application uses JSON files for data loading. A Python script is provided to convert your CSV files into the required JSON format.
+The application requires JSON files. Use the provided Python scripts (via `uv`) to convert your source files:
 
-To generate data for the default `boxen` dataset, run:
 ```bash
-npm run data-build
+# Generate data for the default dataset (boxen)
+task data
+
+# Generate data for a custom dataset
+task data DATA=my_products
 ```
 
-To generate data for your custom dataset (e.g., `my_awesome_products`), pass the name as an argument:
-```bash
-python3 scripts/generate_json.py my_awesome_products
-```
-This command will create the necessary `.json` files in the `public/` directory.
+This will generate the necessary `.json` files in the `public/` directory.
 
 ### 4. Configure `setup.json`
 
-Now, open `public/setup.json` and configure it to use your new dataset and customize the UI:
+Update `public/setup.json` to point to your dataset and customize the appearance:
 
 ```json
 {
-  "dataset": "my_awesome_products",
-  "title": "My Awesome Product Showcase",
+  "dataset": "my_products",
+  "title": "My Custom Showcase",
   "theme": {
     "primary": "#ff3860",
     "link": "#ff8e9b"
   },
   "ui": {
-    "filtersLabel": "Refine Your Search",
-    "noProductsMessage": "Sorry, no awesome products match your search."
+    "filtersLabel": "Refine Results",
+    "noProductsMessage": "No items match your selection."
   }
 }
 ```
 
 ### 5. Run the Development Server
 
-Once the dependencies are installed and the data is configured, start the Vite development server:
+Start the development server with hot-reload:
 
 ```bash
-npm run dev
+task dev
 ```
 
 The application will be available at `http://localhost:5173`.
 
 ## Testing
 
-This project uses `vitest` for testing. To run the test suite, use:
+This project uses `vitest` for unit tests and `playwright` for end-to-end tests.
+
 ```bash
-npm test
+# Run unit and integration tests
+task test
+
+# Run e2e tests
+task test:e2e
+
+# Run all tests
+task test:all
 ```
-The tests cover data loading, error handling, and filtering logic. They run in a `jsdom` environment to simulate a browser.
+
+## Deployment
+
+The project is configured for GitHub Pages. To create a production build:
+
+```bash
+task build
+```
+The optimized files will be in the `dist/` directory.
+
+## Repository
+
+The source code is available at: [https://github.com/Kugeleis/facet-filter-page](https://github.com/Kugeleis/facet-filter-page)

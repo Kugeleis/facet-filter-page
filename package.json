@@ -7,9 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "data-build": "python3 scripts/generate_json.py",
+    "data-build": "task data",
     "test": "vitest",
     "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kugeleis/facet-filter-page.git"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",
