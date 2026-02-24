@@ -1,0 +1,30 @@
+[
+    {
+        "field": "name",
+        "property": "Animal",
+        "prefix": "",
+        "suffix": ""
+    },
+    {
+        "field": "color",
+        "property": "Does it Fart?",
+        "prefix": "Farts? "
+    },
+    {
+        "field": "material",
+        "property": "Scientific name",
+        "prefix": ""
+    },
+    {
+        "field": "weight",
+        "property": "BodySize_cm",
+        "prefix": "",
+        "suffix": " cm"
+    },
+    {
+        "field": "price",
+        "property": "FartFrequency_perDay",
+        "prefix": "",
+        "suffix": " /day"
+    }
+]

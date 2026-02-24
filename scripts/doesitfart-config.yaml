@@ -1,0 +1,19 @@
+values:
+- field: name
+  prefix: ''
+  property: Animal
+  suffix: ''
+- field: color
+  prefix: 'Farts? '
+  property: Does it Fart?
+- field: material
+  prefix: ''
+  property: Scientific name
+- field: weight
+  prefix: ''
+  property: BodySize_cm
+  suffix: ' cm'
+- field: price
+  prefix: ''
+  property: FartFrequency_perDay
+  suffix: ' /day'

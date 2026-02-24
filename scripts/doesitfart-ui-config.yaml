@@ -1,0 +1,24 @@
+values:
+- groupName: Fart Details
+  properties:
+  - id: Does it Fart?
+    title: Does it Fart?
+    type: categorical
+  - id: BodySize_cm
+    title: Body Size (cm)
+    type: continuous-single
+  - id: FartFrequency_perDay
+    title: Fart Frequency (/day)
+    type: continuous-single
+  - id: FartLoudness_dB
+    title: Fart Loudness (dB)
+    type: continuous-single
+  - id: FartSmell_Intensity
+    title: Fart Smell Intensity
+    type: continuous-single
+  - id: MethanePercent
+    title: Methane (%)
+    type: continuous-single
+  - id: FartDuration_ms
+    title: Fart Duration (ms)
+    type: continuous-single
