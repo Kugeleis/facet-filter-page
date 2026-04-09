@@ -48,7 +48,7 @@ describe('Core Application Logic', () => {
         vi.clearAllMocks();
         // Set up the DOM before each test
         document.body.innerHTML = `
-            <h1 id="main-title"></h1>
+            <h1 id="main-title"><a href="#"></a></h1>
             <p id="filters-label"></p>
             <span id="app-version"></span>
             <div id="filter-groups-container"></div>
@@ -76,6 +76,9 @@ describe('Core Application Logic', () => {
         // Mock fetch responses
         (fetch as Mock).mockImplementation((url: string) => {
             const baseUrl = import.meta.env.BASE_URL;
+            if (url === `${baseUrl}setup.local.json`) {
+              return Promise.resolve({ ok: false, status: 404 });
+            }
             if (url === `${baseUrl}setup.json`) {
                 return Promise.resolve({ ok: true, json: () => Promise.resolve({ dataset: 'products' }) });
             }
@@ -100,10 +103,37 @@ describe('Core Application Logic', () => {
     });
 
     describe('Initialization', () => {
+        it('should use setup.local.json if available', async () => {
+            (fetch as Mock).mockImplementation((url: string) => {
+                const baseUrl = import.meta.env.BASE_URL;
+                if (url === `${baseUrl}setup.local.json`) {
+                    return Promise.resolve({ ok: true, json: () => Promise.resolve({ dataset: 'local_products', title: 'Local Title' }) });
+                }
+                if (url === `${baseUrl}local_products.json`) {
+                    return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockProductData]) });
+                }
+                if (url === `${baseUrl}local_products-config.json`) {
+                    return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockTemplateConfig]) });
+                }
+                if (url === `${baseUrl}local_products-ui-config.json`) {
+                    return Promise.resolve({ ok: true, json: () => Promise.resolve([...mockUiConfig]) });
+                }
+                return Promise.resolve({ ok: false, status: 404 });
+            });
+
+            await appModule.initializeApp();
+
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('setup.local.json'));
+            expect(document.title).toBe('Local Title');
+            // Check the <a> inside #main-title
+            expect(document.getElementById('main-title')?.querySelector('a')?.textContent).toContain('Local Title');
+        });
+
         it('should fetch data and render initial UI correctly', async () => {
             await appModule.initializeApp();
 
             // Check if fetch was called for all configs
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('setup.local.json'));
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('setup.json'));
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('products.json'));
 
