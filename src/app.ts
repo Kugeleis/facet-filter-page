@@ -166,9 +166,14 @@ export async function initializeApp(): Promise<void> {
 
   try {
     // --- 1. Fetch Setup Configuration ---
-    const setupResponse = await fetch(`${import.meta.env.BASE_URL}setup.json`);
+    // Try to load setup.local.json first, fall back to setup.json
+    let setupResponse = await fetch(`${import.meta.env.BASE_URL}setup.local.json`);
     if (!setupResponse.ok) {
-      throw new Error(`HTTP error! status: ${setupResponse.status}. Failed to load setup.json.`);
+      setupResponse = await fetch(`${import.meta.env.BASE_URL}setup.json`);
+    }
+
+    if (!setupResponse.ok) {
+      throw new Error(`HTTP error! status: ${setupResponse.status}. Failed to load setup configuration.`);
     }
     const setupConfig = await setupResponse.json();
     const { dataset, title, theme, ui } = setupConfig;

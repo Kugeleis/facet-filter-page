@@ -115,6 +115,35 @@ task build
 ```
 The optimized files will be in the `dist/` directory.
 
+## Using as a Template and Keeping in Sync
+
+This repository is designed to be a template for your own data-driven showcase apps. To keep your app updated with the latest improvements from this repository, follow these steps:
+
+### 1. Initialize Your Project
+If you used the "Use this template" button on GitHub, you already have your own repository. Clone it locally.
+
+### 2. Set Up Upstream Remote
+To pull updates from the original template, add it as a remote named `upstream`:
+```bash
+git remote add upstream https://github.com/Kugeleis/facet-filter-page.git
+```
+
+### 3. Minimize Merge Conflicts
+To make syncing easier, avoid modifying core template files. Instead, use these customization features:
+- **`public/setup.local.json`**: Create this file to override settings in `setup.json`. It is ignored by Git (via `.gitignore`'s `*.local` rule), so it won't be overwritten when you pull updates.
+- **Custom Data Filenames**: Use unique names for your data files in `scripts/` (e.g., `my-products.csv`). When generating JSON, use:
+  ```bash
+  task data DATA=my-products
+  ```
+  This avoids conflicts with the default `boxen` data.
+
+### 4. Pulling Updates
+When you want to sync with the latest template changes:
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
 ## Repository
 
 The source code is available at: [https://github.com/Kugeleis/facet-filter-page](https://github.com/Kugeleis/facet-filter-page)
